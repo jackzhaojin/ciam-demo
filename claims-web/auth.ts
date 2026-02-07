@@ -78,6 +78,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.id = token.sub ?? "";
       session.user.organizations = (token.organizations ?? {}) as Organizations;
       session.user.loyaltyTier = token.loyaltyTier as string | undefined;
+      session.accessToken = token.accessToken as string | undefined;
 
       if (token.error) {
         session.error = token.error as string;

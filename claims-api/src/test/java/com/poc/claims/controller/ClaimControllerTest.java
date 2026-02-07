@@ -220,12 +220,11 @@ class ClaimControllerTest {
 
     private org.springframework.security.oauth2.jwt.Jwt buildJwt(String sub, String orgId, List<String> roles) {
         Map<String, Object> orgData = new HashMap<>();
-        orgData.put("id", orgId);
-        orgData.put("name", "Test Org");
+        orgData.put("name", "test-org");
         orgData.put("roles", roles);
 
         Map<String, Object> organizations = new HashMap<>();
-        organizations.put("test-org", orgData);
+        organizations.put(orgId, orgData);
 
         return org.springframework.security.oauth2.jwt.Jwt.withTokenValue("mock-token")
             .header("alg", "RS256")

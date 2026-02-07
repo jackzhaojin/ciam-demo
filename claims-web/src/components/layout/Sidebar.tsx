@@ -16,9 +16,9 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { selectedOrg } = useOrg();
+  const { selectedOrgId } = useOrg();
 
-  const orgId = selectedOrg?.id ?? "";
+  const orgId = selectedOrgId ?? "";
   const showAdmin = isAdmin(session, orgId);
 
   return (

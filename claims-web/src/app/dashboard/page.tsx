@@ -50,6 +50,9 @@ async function fetchClaims(
       {
         headers: {
           "Content-Type": "application/json",
+          ...(session.accessToken
+            ? { Authorization: `Bearer ${session.accessToken}` }
+            : {}),
           ...(orgId ? { "X-Organization-Id": orgId } : {}),
         },
         cache: "no-store",

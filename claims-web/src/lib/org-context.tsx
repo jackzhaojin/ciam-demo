@@ -13,14 +13,14 @@ import type { OrganizationRoles } from "@/types/auth";
 
 interface OrgContextValue {
   selectedOrg: OrganizationRoles | null;
-  selectedOrgSlug: string | null;
-  setOrg: (slug: string) => void;
-  orgList: Array<{ slug: string } & OrganizationRoles>;
+  selectedOrgId: string | null;
+  setOrg: (orgId: string) => void;
+  orgList: Array<{ id: string } & OrganizationRoles>;
 }
 
 const OrgContext = createContext<OrgContextValue>({
   selectedOrg: null,
-  selectedOrgSlug: null,
+  selectedOrgId: null,
   setOrg: () => {},
   orgList: [],
 });
@@ -37,54 +37,52 @@ function setCookie(name: string, value: string) {
 
 export function OrgContextProvider({ children }: { children: ReactNode }) {
   const { data: session } = useSession();
-  const [selectedOrgSlug, setSelectedOrgSlug] = useState<string | null>(null);
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 
   const organizations = session?.user?.organizations ?? {};
 
-  const orgList = Object.entries(organizations).map(([slug, org]) => ({
-    slug,
+  const orgList = Object.entries(organizations).map(([id, org]) => ({
+    id,
     ...org,
   }));
 
   // Initialize selected org from cookie or default to first
   useEffect(() => {
     if (orgList.length === 0) {
-      setSelectedOrgSlug(null);
+      setSelectedOrgId(null);
       return;
     }
 
-    const cookieValue = getCookie("selectedOrgSlug");
+    const cookieValue = getCookie("selectedOrgId");
 
     // Validate that the cookie value is still in the user's orgs
     if (cookieValue && organizations[cookieValue]) {
-      setSelectedOrgSlug(cookieValue);
+      setSelectedOrgId(cookieValue);
     } else {
       // Default to first org
-      const firstSlug = orgList[0].slug;
-      setSelectedOrgSlug(firstSlug);
-      setCookie("selectedOrgSlug", firstSlug);
-      setCookie("selectedOrgId", organizations[firstSlug]?.id ?? firstSlug);
+      const firstId = orgList[0].id;
+      setSelectedOrgId(firstId);
+      setCookie("selectedOrgId", firstId);
     }
   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setOrg = useCallback(
-    (slug: string) => {
-      if (organizations[slug]) {
-        setSelectedOrgSlug(slug);
-        setCookie("selectedOrgSlug", slug);
-        setCookie("selectedOrgId", organizations[slug].id ?? slug);
+    (orgId: string) => {
+      if (organizations[orgId]) {
+        setSelectedOrgId(orgId);
+        setCookie("selectedOrgId", orgId);
       }
     },
     [organizations],
   );
 
-  const selectedOrg = selectedOrgSlug
-    ? organizations[selectedOrgSlug] ?? null
+  const selectedOrg = selectedOrgId
+    ? organizations[selectedOrgId] ?? null
     : null;
 
   return (
     <OrgContext.Provider
-      value={{ selectedOrg, selectedOrgSlug, setOrg, orgList }}
+      value={{ selectedOrg, selectedOrgId, setOrg, orgList }}
     >
       {children}
     </OrgContext.Provider>

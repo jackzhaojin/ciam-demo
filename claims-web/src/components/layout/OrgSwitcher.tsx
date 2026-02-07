@@ -10,20 +10,20 @@ import {
 } from "@/components/ui/select";
 
 export function OrgSwitcher() {
-  const { selectedOrgSlug, setOrg, orgList } = useOrg();
+  const { selectedOrgId, setOrg, orgList } = useOrg();
 
   if (orgList.length === 0) {
     return <span className="text-sm text-muted-foreground">No organizations</span>;
   }
 
   return (
-    <Select value={selectedOrgSlug ?? undefined} onValueChange={setOrg}>
+    <Select value={selectedOrgId ?? undefined} onValueChange={setOrg}>
       <SelectTrigger className="w-[200px]">
         <SelectValue placeholder="Select organization" />
       </SelectTrigger>
       <SelectContent>
         {orgList.map((org) => (
-          <SelectItem key={org.slug} value={org.slug}>
+          <SelectItem key={org.id} value={org.id}>
             {org.name}
           </SelectItem>
         ))}

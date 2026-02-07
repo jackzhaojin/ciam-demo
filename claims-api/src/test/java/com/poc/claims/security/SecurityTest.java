@@ -251,12 +251,11 @@ class SecurityTest {
 
     private org.springframework.security.oauth2.jwt.Jwt buildJwt(String sub, String orgId, List<String> roles) {
         Map<String, Object> orgData = new HashMap<>();
-        orgData.put("id", orgId);
-        orgData.put("name", "Test Org");
+        orgData.put("name", "test-org");
         orgData.put("roles", roles);
 
         Map<String, Object> organizations = new HashMap<>();
-        organizations.put("test-org", orgData);
+        organizations.put(orgId, orgData);
 
         return org.springframework.security.oauth2.jwt.Jwt.withTokenValue("mock-token")
             .header("alg", "RS256")
@@ -269,18 +268,16 @@ class SecurityTest {
 
     private org.springframework.security.oauth2.jwt.Jwt buildMultiOrgJwt(String sub, String orgId1, String orgId2) {
         Map<String, Object> org1Data = new HashMap<>();
-        org1Data.put("id", orgId1);
-        org1Data.put("name", "Org One");
+        org1Data.put("name", "org-one");
         org1Data.put("roles", List.of("admin"));
 
         Map<String, Object> org2Data = new HashMap<>();
-        org2Data.put("id", orgId2);
-        org2Data.put("name", "Org Two");
+        org2Data.put("name", "org-two");
         org2Data.put("roles", List.of("viewer"));
 
         Map<String, Object> organizations = new HashMap<>();
-        organizations.put("org-one", org1Data);
-        organizations.put("org-two", org2Data);
+        organizations.put(orgId1, org1Data);
+        organizations.put(orgId2, org2Data);
 
         return org.springframework.security.oauth2.jwt.Jwt.withTokenValue("mock-token")
             .header("alg", "RS256")

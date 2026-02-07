@@ -1,10 +1,10 @@
 export interface OrganizationRoles {
-  id: string;
   name: string;
   roles: string[];
   attributes?: Record<string, string>;
 }
 
+/** Keys are org UUIDs (from Phase Two), not slugs */
 export interface Organizations {
-  [orgSlug: string]: OrganizationRoles;
+  [orgId: string]: OrganizationRoles;
 }

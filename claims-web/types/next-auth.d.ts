@@ -8,6 +8,7 @@ declare module "next-auth" {
       organizations: Organizations;
       loyaltyTier?: string;
     } & DefaultSession["user"];
+    accessToken?: string;
     error?: string;
   }
 }

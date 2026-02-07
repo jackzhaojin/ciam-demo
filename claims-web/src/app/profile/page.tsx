@@ -54,8 +54,8 @@ export default async function ProfilePage() {
             </p>
           ) : (
             <div className="space-y-4">
-              {Object.entries(organizations).map(([slug, org]) => (
-                <div key={slug}>
+              {Object.entries(organizations).map(([orgId, org]) => (
+                <div key={orgId}>
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">{org.name}</span>
                     <div className="flex gap-1">

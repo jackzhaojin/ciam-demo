@@ -9,6 +9,7 @@ import { ClaimActions } from "./ClaimActions";
 import type { Claim, ClaimEvent } from "@/types/claim";
 
 async function fetchClaim(id: string): Promise<Claim | null> {
+  const session = await auth();
   const backendUrl = process.env.BACKEND_URL;
   if (!backendUrl) return null;
 
@@ -19,6 +20,9 @@ async function fetchClaim(id: string): Promise<Claim | null> {
     const response = await fetch(`${backendUrl}/api/claims/${id}`, {
       headers: {
         "Content-Type": "application/json",
+        ...(session?.accessToken
+          ? { Authorization: `Bearer ${session.accessToken}` }
+          : {}),
         ...(orgId ? { "X-Organization-Id": orgId } : {}),
       },
       cache: "no-store",
@@ -31,6 +35,7 @@ async function fetchClaim(id: string): Promise<Claim | null> {
 }
 
 async function fetchEvents(id: string): Promise<ClaimEvent[]> {
+  const session = await auth();
   const backendUrl = process.env.BACKEND_URL;
   if (!backendUrl) return [];
 
@@ -41,6 +46,9 @@ async function fetchEvents(id: string): Promise<ClaimEvent[]> {
     const response = await fetch(`${backendUrl}/api/claims/${id}/events`, {
       headers: {
         "Content-Type": "application/json",
+        ...(session?.accessToken
+          ? { Authorization: `Bearer ${session.accessToken}` }
+          : {}),
         ...(orgId ? { "X-Organization-Id": orgId } : {}),
       },
       cache: "no-store",

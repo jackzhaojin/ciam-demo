@@ -4,13 +4,11 @@ import { OrgContextProvider, useOrg } from "@/lib/org-context";
 import type { Organizations } from "@/types/auth";
 
 const mockOrgs: Organizations = {
-  "acme-corp": {
-    id: "org-1",
+  "org-uuid-1": {
     name: "Acme Corp",
     roles: ["admin"],
   },
-  "globex-inc": {
-    id: "org-2",
+  "org-uuid-2": {
     name: "Globex Inc",
     roles: ["viewer"],
   },
@@ -34,13 +32,13 @@ vi.mock("next-auth/react", () => ({
 }));
 
 function TestConsumer() {
-  const { selectedOrg, selectedOrgSlug, orgList, setOrg } = useOrg();
+  const { selectedOrg, selectedOrgId, orgList, setOrg } = useOrg();
   return (
     <div>
-      <span data-testid="slug">{selectedOrgSlug ?? "none"}</span>
+      <span data-testid="orgId">{selectedOrgId ?? "none"}</span>
       <span data-testid="name">{selectedOrg?.name ?? "none"}</span>
       <span data-testid="count">{orgList.length}</span>
-      <button onClick={() => setOrg("globex-inc")}>Switch</button>
+      <button onClick={() => setOrg("org-uuid-2")}>Switch</button>
     </div>
   );
 }
@@ -49,7 +47,6 @@ describe("OrgContext", () => {
   beforeEach(() => {
     // Clear cookies
     document.cookie = "selectedOrgId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    document.cookie = "selectedOrgSlug=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
   });
 
   it("provides org list from session", () => {
@@ -69,7 +66,7 @@ describe("OrgContext", () => {
       </OrgContextProvider>,
     );
 
-    expect(screen.getByTestId("slug").textContent).toBe("acme-corp");
+    expect(screen.getByTestId("orgId").textContent).toBe("org-uuid-1");
     expect(screen.getByTestId("name").textContent).toBe("Acme Corp");
   });
 
@@ -82,7 +79,7 @@ describe("OrgContext", () => {
 
     // Wait for initial render to settle
     await waitFor(() => {
-      expect(screen.getByTestId("slug").textContent).toBe("acme-corp");
+      expect(screen.getByTestId("orgId").textContent).toBe("org-uuid-1");
     });
 
     await act(async () => {
@@ -90,7 +87,7 @@ describe("OrgContext", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("slug").textContent).toBe("globex-inc");
+      expect(screen.getByTestId("orgId").textContent).toBe("org-uuid-2");
       expect(screen.getByTestId("name").textContent).toBe("Globex Inc");
     });
   });

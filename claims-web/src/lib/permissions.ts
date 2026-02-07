@@ -7,14 +7,8 @@ export function getOrgRoles(
 ): string[] {
   if (!organizations) return [];
 
-  // Search by org ID across all org entries
-  for (const org of Object.values(organizations)) {
-    if (org.id === orgId) {
-      return org.roles ?? [];
-    }
-  }
-
-  return [];
+  const org = organizations[orgId];
+  return org?.roles ?? [];
 }
 
 export function hasRole(

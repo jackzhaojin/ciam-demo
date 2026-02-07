@@ -36,9 +36,11 @@ export async function apiClient<T>(
     "Content-Type": "application/json",
   };
 
-  // Access token is available server-side through the JWT callback
-  // We need to get it from the token, not from session (which doesn't expose it)
-  // This function is only called server-side, so we can access the full token
+  // Attach Bearer token for Spring Boot backend authentication
+  if (session.accessToken) {
+    headers["Authorization"] = `Bearer ${session.accessToken}`;
+  }
+
   const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
   const orgId = options.organizationId ?? cookieStore.get("selectedOrgId")?.value;

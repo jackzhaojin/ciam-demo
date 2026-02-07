@@ -22,13 +22,11 @@ function makeSession(organizations: Organizations): Session {
 }
 
 const orgs: Organizations = {
-  "acme-corp": {
-    id: "org-1",
+  "org-1": {
     name: "Acme Corp",
     roles: ["admin", "billing"],
   },
-  "globex-inc": {
-    id: "org-2",
+  "org-2": {
     name: "Globex Inc",
     roles: ["viewer"],
   },
@@ -101,8 +99,7 @@ describe("canApproveClaim", () => {
 
   it("returns true for billing role", () => {
     const billingOrgs: Organizations = {
-      "billing-org": {
-        id: "org-3",
+      "org-3": {
         name: "Billing Org",
         roles: ["billing"],
       },

@@ -51,10 +51,10 @@ const actions: ActionDef[] = [
 export function ClaimActions({ claim }: { claim: Claim }) {
   const router = useRouter();
   const { data: session } = useSession();
-  const { selectedOrg } = useOrg();
+  const { selectedOrgId } = useOrg();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const orgId = selectedOrg?.id ?? "";
+  const orgId = selectedOrgId ?? "";
   const admin = isAdmin(session, orgId);
   const approver = canApproveClaim(session, orgId);
 

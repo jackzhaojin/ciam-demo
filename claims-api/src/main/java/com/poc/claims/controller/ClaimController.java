@@ -38,7 +38,7 @@ public class ClaimController {
             @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest) {
         OrgContext orgContext = getOrgContext(httpRequest);
-        UUID userId = UUID.fromString(jwt.getSubject());
+        UUID userId = extractUserId(jwt);
 
         Claim claim = claimService.createClaim(request, userId, orgContext);
         return ResponseEntity.status(HttpStatus.CREATED).body(ClaimResponse.fromEntity(claim));
@@ -51,7 +51,7 @@ public class ClaimController {
             @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest) {
         OrgContext orgContext = getOrgContext(httpRequest);
-        UUID userId = UUID.fromString(jwt.getSubject());
+        UUID userId = extractUserId(jwt);
 
         Claim claim = claimService.updateClaim(id, request, userId, orgContext);
         return ResponseEntity.ok(ClaimResponse.fromEntity(claim));
@@ -84,7 +84,7 @@ public class ClaimController {
             @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest) {
         OrgContext orgContext = getOrgContext(httpRequest);
-        UUID userId = UUID.fromString(jwt.getSubject());
+        UUID userId = extractUserId(jwt);
 
         Claim claim = claimService.submitClaim(id, userId, orgContext);
         return ResponseEntity.ok(ClaimResponse.fromEntity(claim));
@@ -96,7 +96,7 @@ public class ClaimController {
             @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest) {
         OrgContext orgContext = getOrgContext(httpRequest);
-        UUID userId = UUID.fromString(jwt.getSubject());
+        UUID userId = extractUserId(jwt);
 
         Claim claim = claimService.reviewClaim(id, userId, orgContext);
         return ResponseEntity.ok(ClaimResponse.fromEntity(claim));
@@ -108,7 +108,7 @@ public class ClaimController {
             @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest) {
         OrgContext orgContext = getOrgContext(httpRequest);
-        UUID userId = UUID.fromString(jwt.getSubject());
+        UUID userId = extractUserId(jwt);
 
         Claim claim = claimService.approveClaim(id, userId, orgContext);
         return ResponseEntity.ok(ClaimResponse.fromEntity(claim));
@@ -120,9 +120,21 @@ public class ClaimController {
             @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest) {
         OrgContext orgContext = getOrgContext(httpRequest);
-        UUID userId = UUID.fromString(jwt.getSubject());
+        UUID userId = extractUserId(jwt);
 
         Claim claim = claimService.denyClaim(id, userId, orgContext);
+        return ResponseEntity.ok(ClaimResponse.fromEntity(claim));
+    }
+
+    @PostMapping("/{id}/close")
+    public ResponseEntity<ClaimResponse> closeClaim(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest httpRequest) {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        UUID userId = extractUserId(jwt);
+
+        Claim claim = claimService.closeClaim(id, userId, orgContext);
         return ResponseEntity.ok(ClaimResponse.fromEntity(claim));
     }
 
@@ -145,5 +157,23 @@ public class ClaimController {
             throw new IllegalStateException("Organization context not available");
         }
         return orgContext;
+    }
+
+    /**
+     * Extract a stable user UUID from the JWT.
+     * Phase Two hosted Keycloak does not include the standard "sub" claim,
+     * so we derive a deterministic UUID from the user's email address.
+     */
+    private UUID extractUserId(Jwt jwt) {
+        String sub = jwt.getSubject();
+        if (sub != null) {
+            return UUID.fromString(sub);
+        }
+        // Fallback: deterministic UUID from email (Phase Two tokens lack "sub")
+        String email = jwt.getClaimAsString("email");
+        if (email == null) {
+            throw new IllegalStateException("JWT has neither 'sub' nor 'email' claim");
+        }
+        return UUID.nameUUIDFromBytes(email.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

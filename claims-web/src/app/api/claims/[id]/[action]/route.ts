@@ -38,6 +38,9 @@ export async function POST(
     method: endpoint.method,
     headers: {
       "Content-Type": "application/json",
+      ...(session.accessToken
+        ? { Authorization: `Bearer ${session.accessToken}` }
+        : {}),
       ...(orgId ? { "X-Organization-Id": orgId } : {}),
     },
   });

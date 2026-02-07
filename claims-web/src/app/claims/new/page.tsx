@@ -14,6 +14,7 @@ export default async function NewClaimPage() {
     const backendUrl = process.env.BACKEND_URL;
     if (!backendUrl) throw new Error("Backend not configured");
 
+    const currentSession = await auth();
     const cookieStore = await cookies();
     const orgId = cookieStore.get("selectedOrgId")?.value;
 
@@ -21,6 +22,9 @@ export default async function NewClaimPage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(currentSession?.accessToken
+          ? { Authorization: `Bearer ${currentSession.accessToken}` }
+          : {}),
         ...(orgId ? { "X-Organization-Id": orgId } : {}),
       },
       body: JSON.stringify(data),

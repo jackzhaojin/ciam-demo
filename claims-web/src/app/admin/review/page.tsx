@@ -15,6 +15,7 @@ import { AdminActions } from "./AdminActions";
 import type { Claim, ClaimsPage } from "@/types/claim";
 
 async function fetchReviewQueue(): Promise<Claim[]> {
+  const session = await auth();
   const backendUrl = process.env.BACKEND_URL;
   if (!backendUrl) return [];
 
@@ -30,6 +31,9 @@ async function fetchReviewQueue(): Promise<Claim[]> {
         {
           headers: {
             "Content-Type": "application/json",
+            ...(session?.accessToken
+              ? { Authorization: `Bearer ${session.accessToken}` }
+              : {}),
             ...(orgId ? { "X-Organization-Id": orgId } : {}),
           },
           cache: "no-store",
