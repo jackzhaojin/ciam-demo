@@ -221,7 +221,7 @@ get_user_id() {
 get_org_id() {
   local org_name="$1"
   local result
-  result=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/orgs?search=${org_name}")
+  result=$(kc_get "/realms/${KEYCLOAK_REALM}/orgs?search=${org_name}")
   echo "$result" | jq -r --arg name "$org_name" '.[] | select(.name == $name) | .id // empty'
 }
 
@@ -230,7 +230,7 @@ is_org_member() {
   local org_id="$1"
   local user_id="$2"
   local members
-  members=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/orgs/${org_id}/members")
+  members=$(kc_get "/realms/${KEYCLOAK_REALM}/orgs/${org_id}/members")
   echo "$members" | jq -e --arg uid "$user_id" '.[] | select(.id == $uid)' &>/dev/null
 }
 
@@ -239,6 +239,6 @@ org_role_exists() {
   local org_id="$1"
   local role_name="$2"
   local roles
-  roles=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/orgs/${org_id}/roles")
+  roles=$(kc_get "/realms/${KEYCLOAK_REALM}/orgs/${org_id}/roles")
   echo "$roles" | jq -e --arg name "$role_name" '.[] | select(.name == $name)' &>/dev/null
 }

@@ -159,12 +159,15 @@ if [[ -n "$BFF_UUID" ]]; then
     fail "loyalty-tier-mapper NOT found on poc-bff"
   fi
 
-  if echo "$bff_mappers" | jq -e '.[] | select(.name == "organizations-mapper")' &>/dev/null; then
-    org_mapper_type=$(echo "$bff_mappers" | jq -r '.[] | select(.name == "organizations-mapper") | .protocolMapper')
-    pass "organizations-mapper exists on poc-bff (type: $org_mapper_type)"
-  else
-    fail "organizations-mapper NOT found on poc-bff"
-  fi
+  # Phase Two uses 2 org mappers (active-org-mapper excluded — crashes with direct access grants)
+  for mapper_name in "org-role-mapper" "org-attribute-mapper"; do
+    if echo "$bff_mappers" | jq -e --arg n "$mapper_name" '.[] | select(.name == $n)' &>/dev/null; then
+      mapper_type=$(echo "$bff_mappers" | jq -r --arg n "$mapper_name" '.[] | select(.name == $n) | .protocolMapper')
+      pass "$mapper_name exists on poc-bff (type: $mapper_type)"
+    else
+      fail "$mapper_name NOT found on poc-bff"
+    fi
+  done
 fi
 
 if [[ -n "$BACKEND_UUID" ]]; then
@@ -176,11 +179,13 @@ if [[ -n "$BACKEND_UUID" ]]; then
     fail "loyalty-tier-mapper NOT found on poc-backend"
   fi
 
-  if echo "$backend_mappers" | jq -e '.[] | select(.name == "organizations-mapper")' &>/dev/null; then
-    pass "organizations-mapper exists on poc-backend"
-  else
-    fail "organizations-mapper NOT found on poc-backend"
-  fi
+  for mapper_name in "org-role-mapper" "org-attribute-mapper"; do
+    if echo "$backend_mappers" | jq -e --arg n "$mapper_name" '.[] | select(.name == $n)' &>/dev/null; then
+      pass "$mapper_name exists on poc-backend"
+    else
+      fail "$mapper_name NOT found on poc-backend"
+    fi
+  done
 fi
 
 # ── 6. Organizations ────────────────────────────────────────────────────────
@@ -278,7 +283,7 @@ fi
 # ── 9. Token authentication & JWT decode ─────────────────────────────────────
 log_step "9. Token authentication and JWT structure"
 
-TEST_PASSWORD="Test1234!"
+TEST_PASSWORD="Test1234"
 
 # Get BFF client secret for auth
 BFF_SECRET=""
@@ -295,6 +300,14 @@ fi
 if [[ -z "$BFF_SECRET" ]]; then
   fail "Cannot obtain poc-bff client secret — skipping token tests"
 else
+  # Clear brute-force lockout before testing (may have been triggered by prior debugging)
+  get_admin_token
+  if [[ -n "$ADMIN_UID" ]]; then
+    curl -s -o /dev/null -X DELETE \
+      "${KEYCLOAK_BASE_URL}/admin/realms/${KEYCLOAK_REALM}/attack-detection/brute-force/users/${ADMIN_UID}" \
+      -H "Authorization: Bearer $(admin_token)" 2>/dev/null || true
+  fi
+
   # Authenticate as admin@test.com via direct access grant
   log_info "Authenticating as admin@test.com via direct access grant..."
   token_response=$(curl -sf -X POST \

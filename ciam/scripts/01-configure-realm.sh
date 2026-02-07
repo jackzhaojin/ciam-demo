@@ -20,7 +20,7 @@ status=$(kc_put "/admin/realms/${KEYCLOAK_REALM}" '{
   "registrationEmailAsUsername": true,
   "resetPasswordAllowed": true,
   "rememberMe": true,
-  "verifyEmail": true,
+  "verifyEmail": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "sslRequired": "external",

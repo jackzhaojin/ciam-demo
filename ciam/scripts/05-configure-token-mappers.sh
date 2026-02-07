@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 05-configure-token-mappers.sh — Add loyalty_tier and organizations mappers
 # Adds mappers to BOTH poc-bff and poc-backend clients.
+# Phase Two uses separate mappers for org roles, attributes, and active org.
 
 set -euo pipefail
 
@@ -13,31 +14,6 @@ require_commands curl jq
 log_step "Configuring token claim mappers"
 
 get_admin_token
-
-# ── Discover the correct organization mapper type ────────────────────────────
-log_info "Discovering available protocol mapper types..."
-mapper_types=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/clients/${BFF_UUID:-temp}/protocol-mappers/protocol/openid-connect" 2>/dev/null || echo "[]")
-
-# Try to find organization-related mapper types
-ORG_MAPPER_TYPE=""
-
-# Check multiple possible mapper type names that Phase Two might use
-for candidate in \
-  "oidc-organization-membership-mapper" \
-  "oidc-organization-role-mapper" \
-  "oidc-organization-idp-mapper"; do
-  if echo "$mapper_types" | jq -e --arg t "$candidate" '.[] | select(.id == $t)' &>/dev/null 2>&1; then
-    ORG_MAPPER_TYPE="$candidate"
-    log_ok "Found organization mapper type: $ORG_MAPPER_TYPE"
-    break
-  fi
-done
-
-# If discovery failed, fall back to the documented type
-if [[ -z "$ORG_MAPPER_TYPE" ]]; then
-  ORG_MAPPER_TYPE="oidc-organization-membership-mapper"
-  log_warn "Could not discover org mapper type via API. Using documented default: $ORG_MAPPER_TYPE"
-fi
 
 # ── Get client UUIDs ─────────────────────────────────────────────────────────
 BFF_UUID=$(get_client_uuid "poc-bff")
@@ -100,34 +76,56 @@ log_info "Adding loyalty_tier mapper..."
 add_mapper "$BFF_UUID" "poc-bff" "$LOYALTY_MAPPER"
 add_mapper "$BACKEND_UUID" "poc-backend" "$LOYALTY_MAPPER"
 
-# ── Organizations Mapper (Phase Two extension) ───────────────────────────────
-ORG_MAPPER=$(cat <<EOF
-{
-  "name": "organizations-mapper",
+# ── Phase Two Organization Mappers ───────────────────────────────────────────
+# Phase Two uses separate mapper types. IMPORTANT: claim.name is REQUIRED.
+# The active-organization-mapper is excluded — it crashes for users with org
+# memberships when using direct access grants (no active org session context).
+#
+# Token claim structure:
+#   organizations: { "<org-uuid>": { name: "...", roles: [...] } }
+#   org_attributes: { "<org-uuid>": { name: "...", attributes: { ... } } }
+
+ORG_ROLE_MAPPER='{
+  "name": "org-role-mapper",
   "protocol": "openid-connect",
-  "protocolMapper": "${ORG_MAPPER_TYPE}",
+  "protocolMapper": "oidc-organization-role-mapper",
   "config": {
+    "claim.name": "organizations",
     "id.token.claim": "true",
     "access.token.claim": "true",
     "userinfo.token.claim": "true"
   }
-}
-EOF
-)
+}'
 
-log_info "Adding organizations mapper (type: $ORG_MAPPER_TYPE)..."
-add_mapper "$BFF_UUID" "poc-bff" "$ORG_MAPPER"
-add_mapper "$BACKEND_UUID" "poc-backend" "$ORG_MAPPER"
+ORG_ATTR_MAPPER='{
+  "name": "org-attribute-mapper",
+  "protocol": "openid-connect",
+  "protocolMapper": "oidc-organization-attribute-mapper",
+  "config": {
+    "claim.name": "org_attributes",
+    "id.token.claim": "true",
+    "access.token.claim": "true",
+    "userinfo.token.claim": "true"
+  }
+}'
+
+log_info "Adding organization role mapper..."
+add_mapper "$BFF_UUID" "poc-bff" "$ORG_ROLE_MAPPER"
+add_mapper "$BACKEND_UUID" "poc-backend" "$ORG_ROLE_MAPPER"
+
+log_info "Adding organization attribute mapper..."
+add_mapper "$BFF_UUID" "poc-bff" "$ORG_ATTR_MAPPER"
+add_mapper "$BACKEND_UUID" "poc-backend" "$ORG_ATTR_MAPPER"
 
 # ── Verify mappers ───────────────────────────────────────────────────────────
 get_admin_token
 
 log_info "Verifying mappers on poc-bff..."
 bff_mappers=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/clients/${BFF_UUID}/protocol-mappers/models")
-echo "$bff_mappers" | jq -r '.[] | select(.name == "loyalty-tier-mapper" or .name == "organizations-mapper") | "  \(.name) -> protocolMapper: \(.protocolMapper)"'
+echo "$bff_mappers" | jq -r '.[] | select(.name | test("loyalty|org")) | "  \(.name) -> \(.protocolMapper)"'
 
 log_info "Verifying mappers on poc-backend..."
 backend_mappers=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/clients/${BACKEND_UUID}/protocol-mappers/models")
-echo "$backend_mappers" | jq -r '.[] | select(.name == "loyalty-tier-mapper" or .name == "organizations-mapper") | "  \(.name) -> protocolMapper: \(.protocolMapper)"'
+echo "$backend_mappers" | jq -r '.[] | select(.name | test("loyalty|org")) | "  \(.name) -> \(.protocolMapper)"'
 
 log_ok "Token mapper configuration complete"

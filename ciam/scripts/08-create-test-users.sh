@@ -18,7 +18,7 @@ log_step "Creating test users"
 
 get_admin_token
 
-TEST_PASSWORD="Test1234!"
+TEST_PASSWORD="Test1234"
 
 # ── Get org IDs ──────────────────────────────────────────────────────────────
 ACME_ID=$(get_org_id "acme-corp")
@@ -30,11 +30,15 @@ if [[ -z "$ACME_ID" || -z "$GLOBEX_ID" ]]; then
 fi
 
 # ── Helper: create a user (idempotent) ───────────────────────────────────────
+# Sets _CREATED_USER_ID as return value (avoids stdout capture issues with logging)
+_CREATED_USER_ID=""
+
 create_user() {
   local email="$1"
   local first_name="$2"
   local last_name="$3"
   local loyalty_tier="$4"
+  _CREATED_USER_ID=""
 
   get_admin_token
 
@@ -42,7 +46,7 @@ create_user() {
   user_id=$(get_user_id "$email")
   if [[ -n "$user_id" ]]; then
     log_warn "User '$email' already exists (ID: $user_id) — skipping creation"
-    echo "$user_id"
+    _CREATED_USER_ID="$user_id"
     return 0
   fi
 
@@ -69,7 +73,7 @@ create_user() {
   if [[ "$status" == "201" ]]; then
     user_id=$(get_user_id "$email")
     log_ok "User '$email' created (ID: $user_id)"
-    echo "$user_id"
+    _CREATED_USER_ID="$user_id"
   else
     log_error "Failed to create user '$email' (HTTP $status)"
     return 1
@@ -92,7 +96,7 @@ assign_org_membership() {
   else
     log_info "  Adding user to $org_name..."
     local status
-    status=$(kc_put_nobody "/admin/realms/${KEYCLOAK_REALM}/orgs/${org_id}/members/${user_id}")
+    status=$(kc_put_nobody "/realms/${KEYCLOAK_REALM}/orgs/${org_id}/members/${user_id}")
     if [[ "$status" == "201" || "$status" == "204" || "$status" == "200" ]]; then
       log_ok "  Added to $org_name"
     else
@@ -101,36 +105,27 @@ assign_org_membership() {
     fi
   fi
 
-  # Grant roles
+  # Grant roles — Phase Two uses PUT /realms/{realm}/orgs/{orgId}/roles/{name}/users/{userId}
   if [[ ${#roles[@]} -gt 0 ]]; then
-    local roles_json="["
-    local first=true
-    for role in "${roles[@]}"; do
-      if [[ "$first" == "true" ]]; then
-        first=false
-      else
-        roles_json+=","
-      fi
-      roles_json+="{\"name\":\"${role}\"}"
-    done
-    roles_json+="]"
-
     get_admin_token
     log_info "  Granting roles [${roles[*]}] in $org_name..."
-    local status
-    status=$(kc_post "/admin/realms/${KEYCLOAK_REALM}/orgs/${org_id}/members/${user_id}/roles" "$roles_json")
-    if [[ "$status" == "201" || "$status" == "204" || "$status" == "200" ]]; then
-      log_ok "  Roles granted in $org_name"
-    else
-      log_warn "  Role grant returned HTTP $status (roles may already be assigned)"
-    fi
+    for role in "${roles[@]}"; do
+      local status
+      status=$(kc_put_nobody "/realms/${KEYCLOAK_REALM}/orgs/${org_id}/roles/${role}/users/${user_id}")
+      if [[ "$status" == "201" || "$status" == "204" || "$status" == "200" ]]; then
+        log_ok "    Role '${role}' granted"
+      else
+        log_warn "    Role '${role}' grant returned HTTP $status (may already be assigned)"
+      fi
+    done
   fi
 }
 
 # ── Create Users ─────────────────────────────────────────────────────────────
 
 # admin@test.com — admin+billing in acme-corp, viewer in globex-inc
-ADMIN_USER_ID=$(create_user "admin@test.com" "Admin" "User" "gold")
+create_user "admin@test.com" "Admin" "User" "gold"
+ADMIN_USER_ID="$_CREATED_USER_ID"
 log_info "Assigning org memberships for admin@test.com..."
 assign_org_membership "$ADMIN_USER_ID" "$ACME_ID" "acme-corp" "admin" "billing"
 assign_org_membership "$ADMIN_USER_ID" "$GLOBEX_ID" "globex-inc" "viewer"
@@ -138,14 +133,16 @@ assign_org_membership "$ADMIN_USER_ID" "$GLOBEX_ID" "globex-inc" "viewer"
 echo ""
 
 # user@test.com — viewer in acme-corp
-REGULAR_USER_ID=$(create_user "user@test.com" "Regular" "User" "bronze")
+create_user "user@test.com" "Regular" "User" "bronze"
+REGULAR_USER_ID="$_CREATED_USER_ID"
 log_info "Assigning org memberships for user@test.com..."
 assign_org_membership "$REGULAR_USER_ID" "$ACME_ID" "acme-corp" "viewer"
 
 echo ""
 
 # multi@test.com — admin in both orgs
-MULTI_USER_ID=$(create_user "multi@test.com" "Multi" "OrgUser" "silver")
+create_user "multi@test.com" "Multi" "OrgUser" "silver"
+MULTI_USER_ID="$_CREATED_USER_ID"
 log_info "Assigning org memberships for multi@test.com..."
 assign_org_membership "$MULTI_USER_ID" "$ACME_ID" "acme-corp" "admin"
 assign_org_membership "$MULTI_USER_ID" "$GLOBEX_ID" "globex-inc" "admin"

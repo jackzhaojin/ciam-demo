@@ -44,7 +44,7 @@ create_org_role() {
   fi
 
   local status
-  status=$(kc_post "/admin/realms/${KEYCLOAK_REALM}/orgs/${org_id}/roles" \
+  status=$(kc_post "/realms/${KEYCLOAK_REALM}/orgs/${org_id}/roles" \
     "{\"name\": \"${role_name}\", \"description\": \"${role_desc}\"}")
 
   if [[ "$status" == "201" ]]; then
@@ -71,11 +71,11 @@ create_org_role "$GLOBEX_ID" "globex-inc" "viewer"  "Read-only access"
 get_admin_token
 log_info "Verifying roles..."
 
-acme_roles=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/orgs/${ACME_ID}/roles")
+acme_roles=$(kc_get "/realms/${KEYCLOAK_REALM}/orgs/${ACME_ID}/roles")
 log_ok "acme-corp roles:"
 echo "$acme_roles" | jq -r '.[] | "  \(.name) — \(.description // "")"'
 
-globex_roles=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/orgs/${GLOBEX_ID}/roles")
+globex_roles=$(kc_get "/realms/${KEYCLOAK_REALM}/orgs/${GLOBEX_ID}/roles")
 log_ok "globex-inc roles:"
 echo "$globex_roles" | jq -r '.[] | "  \(.name) — \(.description // "")"'
 

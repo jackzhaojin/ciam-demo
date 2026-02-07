@@ -19,7 +19,7 @@ if [[ -n "$ACME_ID" ]]; then
   log_warn "Organization 'acme-corp' already exists (ID: $ACME_ID) — skipping"
 else
   log_info "Creating organization 'acme-corp'..."
-  status=$(kc_post "/admin/realms/${KEYCLOAK_REALM}/orgs" '{
+  status=$(kc_post "/realms/${KEYCLOAK_REALM}/orgs" '{
     "name": "acme-corp",
     "displayName": "Acme Corporation",
     "domains": ["acme-corp.com"],
@@ -44,7 +44,7 @@ if [[ -n "$GLOBEX_ID" ]]; then
   log_warn "Organization 'globex-inc' already exists (ID: $GLOBEX_ID) — skipping"
 else
   log_info "Creating organization 'globex-inc'..."
-  status=$(kc_post "/admin/realms/${KEYCLOAK_REALM}/orgs" '{
+  status=$(kc_post "/realms/${KEYCLOAK_REALM}/orgs" '{
     "name": "globex-inc",
     "displayName": "Globex Inc.",
     "domains": ["globex.com"],
@@ -66,7 +66,7 @@ fi
 # ── Verify ───────────────────────────────────────────────────────────────────
 get_admin_token
 log_info "Verifying organizations..."
-orgs=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/orgs")
+orgs=$(kc_get "/realms/${KEYCLOAK_REALM}/orgs")
 org_count=$(echo "$orgs" | jq 'length')
 log_ok "Total organizations in realm: $org_count"
 echo "$orgs" | jq -r '.[] | "  \(.name) — \(.displayName // "no display name")"'
