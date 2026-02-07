@@ -10,10 +10,14 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
+        default_schema: PUBLIC
     open-in-view: false
   flyway:
     enabled: true
     locations: classpath:db/migration
+    baseline-on-migrate: false
+    baseline-version: 0
+    schemas: PUBLIC
   security:
     oauth2:
       resourceserver:

@@ -12,10 +12,14 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: ${SUPABASE_DB_SCHEMA:public}
     open-in-view: false
   flyway:
     enabled: true
     locations: classpath:db/migration
+    schemas: ${SUPABASE_DB_SCHEMA:public}
+    baseline-on-migrate: true
+    baseline-version: 2
   security:
     oauth2:
       resourceserver:
