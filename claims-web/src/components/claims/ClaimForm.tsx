@@ -28,13 +28,15 @@ const claimTypes: { value: ClaimType; label: string }[] = [
   { value: "HEALTH", label: "Health" },
 ];
 
+function todayLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const claimSchema = z.object({
   type: z.enum(["AUTO", "PROPERTY", "LIABILITY", "HEALTH"]),
   incidentDate: z.string().min(1, "Incident date is required").refine(
-    (val) => {
-      const date = new Date(val);
-      return !isNaN(date.getTime()) && date <= new Date();
-    },
+    (val) => val <= todayLocal(),
     { message: "Incident date cannot be in the future" },
   ),
   description: z
@@ -78,7 +80,7 @@ export function ClaimForm({
       type: "AUTO",
       description: "",
       amount: 0,
-      incidentDate: new Date().toISOString().split("T")[0],
+      incidentDate: todayLocal(),
     },
     mode: "onTouched",
   });
@@ -162,7 +164,7 @@ export function ClaimForm({
               <Input
                 id="incidentDate"
                 type="date"
-                max={new Date().toISOString().split("T")[0]}
+                max={todayLocal()}
                 {...register("incidentDate")}
               />
               {errors.incidentDate && (

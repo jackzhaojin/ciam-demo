@@ -42,6 +42,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
+            className="relative"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Toggle theme"
           >

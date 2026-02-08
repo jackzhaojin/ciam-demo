@@ -26,13 +26,8 @@ export function isAdmin(session: Session | null, orgId: string): boolean {
 }
 
 export function canCreateClaim(session: Session | null, orgId: string): boolean {
-  if (!session?.user?.organizations) return false;
-  // Any org member can create claims, except viewers
-  const roles = getOrgRoles(session.user.organizations, orgId);
-  if (roles.length === 0) return false;
-  // If the only role is viewer, they can't create
-  if (roles.length === 1 && roles[0] === "viewer") return false;
-  return true;
+  // Only admins can create claims (spec: viewer and billing cannot create)
+  return isAdmin(session, orgId);
 }
 
 export function canApproveClaim(

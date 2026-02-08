@@ -1,8 +1,10 @@
 import { auth } from "../../../auth";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isAdmin } from "@/lib/permissions";
 import {
   Table,
   TableBody,
@@ -55,13 +57,19 @@ export default async function DashboardPage({
   const page = parseInt(params.page ?? "0", 10);
   const data = await fetchClaims(status, page);
 
+  const cookieStore = await cookies();
+  const orgId = cookieStore.get("selectedOrgId")?.value ?? "";
+  const showCreateButton = isAdmin(session, orgId);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Claims Dashboard</h1>
-        <Link href="/claims/new">
-          <Button>File New Claim</Button>
-        </Link>
+        {showCreateButton && (
+          <Link href="/claims/new">
+            <Button>File New Claim</Button>
+          </Link>
+        )}
       </div>
 
       <Tabs defaultValue={status}>

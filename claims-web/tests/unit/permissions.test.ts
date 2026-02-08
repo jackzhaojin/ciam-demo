@@ -81,6 +81,14 @@ describe("canCreateClaim", () => {
     expect(canCreateClaim(session, "org-1")).toBe(true);
   });
 
+  it("returns false for billing-only", () => {
+    const billingOrgs: Organizations = {
+      "org-billing": { name: "Billing Org", roles: ["billing"] },
+    };
+    const session = makeSession(billingOrgs);
+    expect(canCreateClaim(session, "org-billing")).toBe(false);
+  });
+
   it("returns false for viewer-only", () => {
     const session = makeSession(orgs);
     expect(canCreateClaim(session, "org-2")).toBe(false);

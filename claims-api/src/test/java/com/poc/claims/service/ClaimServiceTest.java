@@ -97,7 +97,7 @@ class ClaimServiceTest {
 
         assertThatThrownBy(() -> claimService.createClaim(request, userId, viewerContext))
             .isInstanceOf(SecurityException.class)
-            .hasMessageContaining("Viewers cannot create claims");
+            .hasMessageContaining("Only admins can create claims");
     }
 
     @Test
@@ -107,7 +107,7 @@ class ClaimServiceTest {
 
         assertThatThrownBy(() -> claimService.createClaim(request, userId, billingContext))
             .isInstanceOf(SecurityException.class)
-            .hasMessageContaining("Billing users cannot create claims");
+            .hasMessageContaining("Only admins can create claims");
     }
 
     @Test

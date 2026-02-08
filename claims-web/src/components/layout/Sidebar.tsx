@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", requiresAdmin: false },
-  { href: "/claims/new", label: "File Claim", requiresAdmin: false },
+  { href: "/claims/new", label: "File Claim", requiresAdmin: true },
   { href: "/admin/review", label: "Admin Review", requiresAdmin: true },
 ];
 
