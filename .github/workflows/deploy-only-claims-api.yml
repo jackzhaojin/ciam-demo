@@ -1,0 +1,77 @@
+name: Deploy Only - Claims API
+
+on:
+  workflow_dispatch:
+    inputs:
+      action_type:
+        description: 'Deployment action'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - restart
+
+env:
+  IMAGE: ghcr.io/jackzhaojin/ciam-claims-api
+  DEPLOY_DIR: ~/jack-dev-server-configs/server/oracle-arm4-free-vm/deploy-ciam
+
+jobs:
+  restart-only:
+    name: Restart Container
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action_type == 'restart'
+    steps:
+      - name: Restart container on Oracle VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ${{ env.DEPLOY_DIR }}
+            docker compose restart claims-api
+            docker compose ps
+            docker compose logs --tail=20 claims-api
+
+  deploy-latest:
+    name: Deploy Latest Image
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action_type == 'deploy'
+    steps:
+      - name: Deploy to Oracle VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ${{ env.DEPLOY_DIR }} || exit 1
+            docker compose pull claims-api
+            docker compose up -d --no-deps claims-api
+            docker image prune -af --filter "until=24h"
+            docker compose ps
+            sleep 5
+            docker compose logs --tail=30 claims-api
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ${{ env.DEPLOY_DIR }}
+            for i in $(seq 1 30); do
+              HEALTH=$(docker inspect --format='{{.State.Health.Status}}' ciam-claims-api 2>/dev/null || echo "starting")
+              echo "Health check attempt $i/30: $HEALTH"
+              if [ "$HEALTH" = "healthy" ]; then
+                echo "claims-api is healthy!"
+                echo "URL: http://${{ secrets.ORACLE_HOST }}:8080/api/health"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "claims-api failed to become healthy"
+            docker compose logs --tail=100 claims-api
+            exit 1
