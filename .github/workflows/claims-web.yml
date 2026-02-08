@@ -1,0 +1,78 @@
+name: Claims Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'claims-web/**'
+      - '.github/workflows/claims-web.yml'
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/jackzhaojin/ciam-claims-web
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: claims-web
+          push: true
+          platforms: linux/arm64
+          provenance: false
+          build-args: |
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Oracle VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ~/jack-dev-server-configs/server/oracle-arm4-free-vm/deploy-ciam || exit 1
+            docker compose pull claims-web
+            docker compose up -d --no-deps claims-web
+            docker image prune -af --filter "until=24h"
+            docker compose ps
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ~/jack-dev-server-configs/server/oracle-arm4-free-vm/deploy-ciam
+            echo "Waiting for claims-web to be healthy..."
+            for i in $(seq 1 30); do
+              HEALTH=$(docker inspect --format='{{.State.Health.Status}}' ciam-claims-web 2>/dev/null || echo "starting")
+              echo "Health check attempt $i: $HEALTH"
+              if [ "$HEALTH" = "healthy" ]; then
+                echo "claims-web is healthy!"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "claims-web failed to become healthy"
+            docker compose logs --tail=100 claims-web
+            exit 1
