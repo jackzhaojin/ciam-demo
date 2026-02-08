@@ -32,8 +32,6 @@ jobs:
           push: true
           platforms: linux/arm64
           provenance: false
-          build-args: |
-            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
           tags: |
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:${{ github.sha }}

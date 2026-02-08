@@ -33,6 +33,7 @@ SCRIPTS=(
   "06-create-organizations.sh"
   "07-create-org-roles.sh"
   "08-create-test-users.sh"
+  "09-configure-production-uris.sh"
 )
 
 FAILED=0
