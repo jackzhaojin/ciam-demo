@@ -15,6 +15,7 @@ Thumbs.db
 *.iml
 *.swp
 *.swo
+*.code-workspace
 
 # Java / Gradle
 claims-api/.gradle/
