@@ -42,3 +42,4 @@ claims-web/demo-output/
 
 # Local keys / secrets
 local-only/
+~/.claude/skills
