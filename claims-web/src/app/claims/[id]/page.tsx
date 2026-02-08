@@ -1,60 +1,24 @@
 import { auth } from "../../../../auth";
 import { redirect, notFound } from "next/navigation";
-import { cookies } from "next/headers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/claims/StatusBadge";
 import { ClaimTimeline } from "@/components/claims/ClaimTimeline";
 import { ClaimActions } from "./ClaimActions";
+import { apiClient } from "@/lib/api";
 import type { Claim, ClaimEvent } from "@/types/claim";
 
 async function fetchClaim(id: string): Promise<Claim | null> {
-  const session = await auth();
-  const backendUrl = process.env.BACKEND_URL;
-  if (!backendUrl) return null;
-
-  const cookieStore = await cookies();
-  const orgId = cookieStore.get("selectedOrgId")?.value;
-
   try {
-    const response = await fetch(`${backendUrl}/api/claims/${id}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(session?.accessToken
-          ? { Authorization: `Bearer ${session.accessToken}` }
-          : {}),
-        ...(orgId ? { "X-Organization-Id": orgId } : {}),
-      },
-      cache: "no-store",
-    });
-    if (!response.ok) return null;
-    return response.json();
+    return await apiClient<Claim>(`/api/claims/${id}`);
   } catch {
     return null;
   }
 }
 
 async function fetchEvents(id: string): Promise<ClaimEvent[]> {
-  const session = await auth();
-  const backendUrl = process.env.BACKEND_URL;
-  if (!backendUrl) return [];
-
-  const cookieStore = await cookies();
-  const orgId = cookieStore.get("selectedOrgId")?.value;
-
   try {
-    const response = await fetch(`${backendUrl}/api/claims/${id}/events`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(session?.accessToken
-          ? { Authorization: `Bearer ${session.accessToken}` }
-          : {}),
-        ...(orgId ? { "X-Organization-Id": orgId } : {}),
-      },
-      cache: "no-store",
-    });
-    if (!response.ok) return [];
-    return response.json();
+    return await apiClient<ClaimEvent[]>(`/api/claims/${id}/events`);
   } catch {
     return [];
   }

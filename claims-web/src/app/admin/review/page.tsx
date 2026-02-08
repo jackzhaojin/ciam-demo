@@ -12,43 +12,24 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/claims/StatusBadge";
 import { AdminActions } from "./AdminActions";
+import { getOrgRoles } from "@/lib/permissions";
+import { apiClient } from "@/lib/api";
 import type { Claim, ClaimsPage } from "@/types/claim";
 
 async function fetchReviewQueue(): Promise<Claim[]> {
-  const session = await auth();
-  const backendUrl = process.env.BACKEND_URL;
-  if (!backendUrl) return [];
-
-  const cookieStore = await cookies();
-  const orgId = cookieStore.get("selectedOrgId")?.value;
-
   const claims: Claim[] = [];
 
   for (const status of ["SUBMITTED", "UNDER_REVIEW"]) {
     try {
-      const response = await fetch(
-        `${backendUrl}/api/claims?status=${status}&size=50&sort=filedDate,asc`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...(session?.accessToken
-              ? { Authorization: `Bearer ${session.accessToken}` }
-              : {}),
-            ...(orgId ? { "X-Organization-Id": orgId } : {}),
-          },
-          cache: "no-store",
-        },
+      const page = await apiClient<ClaimsPage>(
+        `/api/claims?status=${status}&size=50&sort=filedDate,asc`,
       );
-      if (response.ok) {
-        const page: ClaimsPage = await response.json();
-        claims.push(...page.content);
-      }
+      claims.push(...page.content);
     } catch {
       // continue
     }
   }
 
-  // Sort by filed date oldest first
   claims.sort(
     (a, b) => new Date(a.filedDate).getTime() - new Date(b.filedDate).getTime(),
   );
@@ -59,6 +40,14 @@ async function fetchReviewQueue(): Promise<Claim[]> {
 export default async function AdminReviewPage() {
   const session = await auth();
   if (!session) redirect("/");
+
+  // Role-gate: only admins can access the review page
+  const cookieStore = await cookies();
+  const selectedOrgId = cookieStore.get("selectedOrgId")?.value ?? "";
+  const roles = getOrgRoles(session.user?.organizations, selectedOrgId);
+  if (!roles.includes("admin")) {
+    redirect("/dashboard");
+  }
 
   const claims = await fetchReviewQueue();
 

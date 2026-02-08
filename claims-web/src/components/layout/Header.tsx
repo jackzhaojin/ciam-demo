@@ -1,7 +1,10 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
+import { useTheme } from "next-themes";
+import { Moon, Sun } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +17,7 @@ import Link from "next/link";
 
 export function Header() {
   const { data: session } = useSession();
+  const { theme, setTheme } = useTheme();
 
   const initials = session?.user?.name
     ? session.user.name
@@ -33,6 +37,17 @@ export function Header() {
           </Link>
           {session && <OrgSwitcher />}
         </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label="Toggle theme"
+          >
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </Button>
 
         {session && (
           <DropdownMenu>
@@ -62,6 +77,7 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        </div>
       </div>
     </header>
   );

@@ -1,6 +1,19 @@
 import NextAuth from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
+import { createHash } from "crypto";
 import type { Organizations } from "@/types/auth";
+
+/**
+ * Derive a deterministic UUID v3 from email bytes, matching
+ * Java's UUID.nameUUIDFromBytes(email.getBytes(UTF_8)).
+ */
+function uuidFromEmail(email: string): string {
+  const md5 = createHash("md5").update(email, "utf8").digest();
+  md5[6] = (md5[6] & 0x0f) | 0x30; // version 3
+  md5[8] = (md5[8] & 0x3f) | 0x80; // RFC 4122 variant
+  const hex = md5.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -16,6 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
+        token.idToken = account.id_token;
         token.expiresAt = account.expires_at;
 
         // Extract organizations from the ID token / profile
@@ -75,7 +89,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      session.user.id = token.sub ?? "";
+      // Derive user ID matching backend: sub if available, else UUID from email
+      session.user.id = token.sub ?? (token.email ? uuidFromEmail(token.email) : "");
       session.user.organizations = (token.organizations ?? {}) as Organizations;
       session.user.loyaltyTier = token.loyaltyTier as string | undefined;
       session.accessToken = token.accessToken as string | undefined;
@@ -85,6 +100,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       return session;
+    },
+  },
+  events: {
+    async signOut(message) {
+      // End Keycloak session on sign-out
+      const issuer = process.env.KEYCLOAK_ISSUER_URI;
+      if (issuer && "token" in message && message.token?.idToken) {
+        const logoutUrl = `${issuer}/protocol/openid-connect/logout`;
+        try {
+          await fetch(logoutUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              id_token_hint: message.token.idToken as string,
+              client_id: process.env.KEYCLOAK_BFF_CLIENT_ID!,
+              client_secret: process.env.KEYCLOAK_BFF_CLIENT_SECRET!,
+            }),
+          });
+        } catch {
+          // Best-effort — don't block sign-out if Keycloak is unreachable
+        }
+      }
     },
   },
   pages: {

@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import type { ClaimType, CreateClaimRequest } from "@/types/claim";
 
 const claimTypes: { value: ClaimType; label: string }[] = [
@@ -24,6 +28,34 @@ const claimTypes: { value: ClaimType; label: string }[] = [
   { value: "HEALTH", label: "Health" },
 ];
 
+const claimSchema = z.object({
+  type: z.enum(["AUTO", "PROPERTY", "LIABILITY", "HEALTH"]),
+  incidentDate: z.string().min(1, "Incident date is required").refine(
+    (val) => {
+      const date = new Date(val);
+      return !isNaN(date.getTime()) && date <= new Date();
+    },
+    { message: "Incident date cannot be in the future" },
+  ),
+  description: z
+    .string()
+    .min(10, "Description must be at least 10 characters")
+    .max(2000, "Description must be under 2000 characters"),
+  amount: z
+    .number({ message: "Amount is required" })
+    .positive("Amount must be greater than zero")
+    .max(10_000_000, "Amount cannot exceed $10,000,000"),
+});
+
+type ClaimFormData = z.infer<typeof claimSchema>;
+
+// Fields validated per step (for partial validation on Next)
+const stepFields: Record<number, (keyof ClaimFormData)[]> = {
+  1: ["type"],
+  2: ["incidentDate", "description"],
+  3: ["amount"],
+};
+
 export function ClaimForm({
   onSubmit,
 }: {
@@ -32,22 +64,45 @@ export function ClaimForm({
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<CreateClaimRequest>({
-    type: "AUTO",
-    description: "",
-    amount: 0,
-    incidentDate: new Date().toISOString().split("T")[0],
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    trigger,
+    formState: { errors },
+  } = useForm<ClaimFormData>({
+    resolver: zodResolver(claimSchema),
+    defaultValues: {
+      type: "AUTO",
+      description: "",
+      amount: 0,
+      incidentDate: new Date().toISOString().split("T")[0],
+    },
+    mode: "onTouched",
   });
 
-  const handleSubmit = async () => {
+  const formData = watch();
+
+  const goNext = async () => {
+    const fields = stepFields[step];
+    if (fields) {
+      const valid = await trigger(fields);
+      if (!valid) return;
+    }
+    setStep((s) => s + 1);
+  };
+
+  const onFormSubmit = async (data: ClaimFormData) => {
     setSubmitting(true);
-    setError(null);
     try {
-      const result = await onSubmit(formData);
+      const result = await onSubmit(data);
+      toast.success("Claim created successfully");
       router.push(`/claims/${result.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create claim");
+      const message = e instanceof Error ? e.message : "Failed to create claim";
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -80,7 +135,7 @@ export function ClaimForm({
             <Select
               value={formData.type}
               onValueChange={(v) =>
-                setFormData({ ...formData, type: v as ClaimType })
+                setValue("type", v as ClaimType, { shouldValidate: true })
               }
             >
               <SelectTrigger id="claimType">
@@ -94,6 +149,9 @@ export function ClaimForm({
                 ))}
               </SelectContent>
             </Select>
+            {errors.type && (
+              <p className="text-sm text-destructive">{errors.type.message}</p>
+            )}
           </div>
         )}
 
@@ -104,23 +162,28 @@ export function ClaimForm({
               <Input
                 id="incidentDate"
                 type="date"
-                value={formData.incidentDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, incidentDate: e.target.value })
-                }
+                max={new Date().toISOString().split("T")[0]}
+                {...register("incidentDate")}
               />
+              {errors.incidentDate && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.incidentDate.message}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 placeholder="Describe the incident..."
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
                 rows={5}
+                {...register("description")}
               />
+              {errors.description && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.description.message}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -133,14 +196,13 @@ export function ClaimForm({
               type="number"
               min={0}
               step={0.01}
-              value={formData.amount || ""}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  amount: parseFloat(e.target.value) || 0,
-                })
-              }
+              {...register("amount", { valueAsNumber: true })}
             />
+            {errors.amount && (
+              <p className="text-sm text-destructive mt-1">
+                {errors.amount.message}
+              </p>
+            )}
           </div>
         )}
 
@@ -159,16 +221,13 @@ export function ClaimForm({
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Amount</dt>
-                <dd>${formData.amount.toLocaleString()}</dd>
+                <dd>${(formData.amount ?? 0).toLocaleString()}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Description</dt>
-                <dd className="mt-1">{formData.description || "—"}</dd>
+                <dd className="mt-1">{formData.description || "\u2014"}</dd>
               </div>
             </dl>
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
           </div>
         )}
 
@@ -181,9 +240,12 @@ export function ClaimForm({
             Back
           </Button>
           {step < 4 ? (
-            <Button onClick={() => setStep((s) => s + 1)}>Next</Button>
+            <Button onClick={goNext}>Next</Button>
           ) : (
-            <Button onClick={handleSubmit} disabled={submitting}>
+            <Button
+              onClick={handleSubmit(onFormSubmit)}
+              disabled={submitting}
+            >
               {submitting ? "Submitting..." : "Submit Claim"}
             </Button>
           )}

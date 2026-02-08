@@ -29,6 +29,13 @@ public class ClaimService {
 
     @Transactional
     public Claim createClaim(CreateClaimRequest request, UUID userId, OrgContext orgContext) {
+        if (orgContext.isViewer() && !orgContext.isAdmin() && !orgContext.isBilling()) {
+            throw new SecurityException("Viewers cannot create claims");
+        }
+        if (orgContext.isBilling() && !orgContext.isAdmin()) {
+            throw new SecurityException("Billing users cannot create claims");
+        }
+
         Claim claim = new Claim();
         claim.setId(UUID.randomUUID());
         claim.setClaimNumber(generateClaimNumber());

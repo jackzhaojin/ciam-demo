@@ -376,6 +376,53 @@ else
         echo "$decoded" | jq 'keys' 2>/dev/null
       fi
 
+      # ── 9b. Token structure assertions ──
+      # Validate organizations claim structure: each org should have name + roles[]
+      org_count=$(echo "$decoded" | jq '[.organizations // {} | to_entries[]] | length' 2>/dev/null || echo "0")
+      if [[ "$org_count" -ge 1 ]]; then
+        pass "Organizations claim contains $org_count org(s)"
+      else
+        fail "Organizations claim is empty or malformed"
+      fi
+
+      # Check that at least one org has a roles array
+      orgs_with_roles=$(echo "$decoded" | jq '[.organizations // {} | to_entries[] | select(.value.roles | type == "array" and length > 0)] | length' 2>/dev/null || echo "0")
+      if [[ "$orgs_with_roles" -ge 1 ]]; then
+        pass "At least one org has non-empty roles array"
+      else
+        fail "No orgs have a valid roles array — backend auth will fail"
+      fi
+
+      # Check that each org entry has a 'name' field
+      orgs_with_name=$(echo "$decoded" | jq '[.organizations // {} | to_entries[] | select(.value.name != null and .value.name != "")] | length' 2>/dev/null || echo "0")
+      if [[ "$orgs_with_name" == "$org_count" ]]; then
+        pass "All orgs have a 'name' field"
+      else
+        fail "Some orgs missing 'name' field ($orgs_with_name of $org_count)"
+      fi
+
+      # Validate loyalty_tier is a known value
+      if [[ "$loyalty_claim" == "gold" || "$loyalty_claim" == "silver" || "$loyalty_claim" == "bronze" ]]; then
+        pass "loyalty_tier is a valid tier: $loyalty_claim"
+      elif [[ -n "$loyalty_claim" ]]; then
+        warn "loyalty_tier has unexpected value: $loyalty_claim (expected gold/silver/bronze)"
+      fi
+
+      # Validate standard JWT claims
+      iss_claim=$(echo "$decoded" | jq -r '.iss // empty')
+      if [[ -n "$iss_claim" ]]; then
+        pass "Token has 'iss' claim: $iss_claim"
+      else
+        fail "Token missing 'iss' (issuer) claim"
+      fi
+
+      exp_claim=$(echo "$decoded" | jq -r '.exp // empty')
+      if [[ -n "$exp_claim" ]]; then
+        pass "Token has 'exp' claim (expires at: $exp_claim)"
+      else
+        fail "Token missing 'exp' (expiration) claim"
+      fi
+
       # Also decode the id_token for comparison
       id_token=$(echo "$token_response" | jq -r '.id_token // empty')
       if [[ -n "$id_token" && "$id_token" != "null" ]]; then

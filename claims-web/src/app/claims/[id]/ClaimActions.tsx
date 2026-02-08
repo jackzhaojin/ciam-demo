@@ -6,13 +6,14 @@ import { useSession } from "next-auth/react";
 import { useOrg } from "@/lib/org-context";
 import { isAdmin, canApproveClaim } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import type { Claim, ClaimStatus } from "@/types/claim";
 
 interface ActionDef {
   label: string;
   action: string;
   variant: "default" | "destructive" | "outline";
-  show: (status: ClaimStatus, admin: boolean, approver: boolean) => boolean;
+  show: (status: ClaimStatus, admin: boolean, approver: boolean, isOwner: boolean) => boolean;
 }
 
 const actions: ActionDef[] = [
@@ -20,7 +21,7 @@ const actions: ActionDef[] = [
     label: "Submit",
     action: "submit",
     variant: "default",
-    show: (s) => s === "DRAFT",
+    show: (s, a, _ap, isOwner) => s === "DRAFT" && (isOwner || a),
   },
   {
     label: "Begin Review",
@@ -57,12 +58,21 @@ export function ClaimActions({ claim }: { claim: Claim }) {
   const orgId = selectedOrgId ?? "";
   const admin = isAdmin(session, orgId);
   const approver = canApproveClaim(session, orgId);
+  const isOwner = !!session?.user?.id && session.user.id === claim.userId;
 
   const visibleActions = actions.filter((a) =>
-    a.show(claim.status, admin, approver),
+    a.show(claim.status, admin, approver, isOwner),
   );
 
   if (visibleActions.length === 0) return null;
+
+  const actionLabels: Record<string, string> = {
+    submit: "submitted",
+    review: "moved to review",
+    approve: "approved",
+    deny: "denied",
+    close: "closed",
+  };
 
   const handleAction = async (action: string) => {
     setLoading(action);
@@ -71,8 +81,15 @@ export function ClaimActions({ claim }: { claim: Claim }) {
         method: "POST",
       });
       if (response.ok) {
+        toast.success(`Claim ${actionLabels[action] ?? action} successfully`);
         router.refresh();
+      } else {
+        const data = await response.json().catch(() => null);
+        const message = data?.error || `Failed to ${action} claim`;
+        toast.error(message);
       }
+    } catch {
+      toast.error("Network error. Please try again.");
     } finally {
       setLoading(null);
     }

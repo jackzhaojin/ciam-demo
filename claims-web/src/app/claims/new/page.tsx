@@ -1,7 +1,7 @@
 import { auth } from "../../../../auth";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { ClaimForm } from "@/components/claims/ClaimForm";
+import { apiClient } from "@/lib/api";
 import type { CreateClaimRequest } from "@/types/claim";
 
 export default async function NewClaimPage() {
@@ -11,31 +11,10 @@ export default async function NewClaimPage() {
   async function createClaim(data: CreateClaimRequest): Promise<{ id: string }> {
     "use server";
 
-    const backendUrl = process.env.BACKEND_URL;
-    if (!backendUrl) throw new Error("Backend not configured");
-
-    const currentSession = await auth();
-    const cookieStore = await cookies();
-    const orgId = cookieStore.get("selectedOrgId")?.value;
-
-    const response = await fetch(`${backendUrl}/api/claims`, {
+    return apiClient<{ id: string }>("/api/claims", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(currentSession?.accessToken
-          ? { Authorization: `Bearer ${currentSession.accessToken}` }
-          : {}),
-        ...(orgId ? { "X-Organization-Id": orgId } : {}),
-      },
-      body: JSON.stringify(data),
+      body: data,
     });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || "Failed to create claim");
-    }
-
-    return response.json();
   }
 
   return (

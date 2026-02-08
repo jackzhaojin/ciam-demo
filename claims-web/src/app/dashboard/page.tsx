@@ -1,6 +1,5 @@
 import { auth } from "../../../auth";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/claims/StatusBadge";
+import { apiClient } from "@/lib/api";
 import type { ClaimsPage, ClaimStatus } from "@/types/claim";
 
 const statusTabs: { value: string; label: string }[] = [
@@ -30,37 +30,13 @@ async function fetchClaims(
   status?: string,
   page: number = 0,
 ): Promise<ClaimsPage | null> {
-  const session = await auth();
-  if (!session) return null;
-
-  const backendUrl = process.env.BACKEND_URL;
-  if (!backendUrl) return null;
-
-  const cookieStore = await cookies();
-  const orgId = cookieStore.get("selectedOrgId")?.value;
-
   const params = new URLSearchParams();
   if (status && status !== "ALL") params.set("status", status);
   params.set("page", page.toString());
   params.set("size", "20");
 
   try {
-    const response = await fetch(
-      `${backendUrl}/api/claims?${params.toString()}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          ...(session.accessToken
-            ? { Authorization: `Bearer ${session.accessToken}` }
-            : {}),
-          ...(orgId ? { "X-Organization-Id": orgId } : {}),
-        },
-        cache: "no-store",
-      },
-    );
-
-    if (!response.ok) return null;
-    return response.json();
+    return await apiClient<ClaimsPage>(`/api/claims?${params.toString()}`);
   } catch {
     return null;
   }
