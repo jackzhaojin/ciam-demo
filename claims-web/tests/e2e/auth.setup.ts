@@ -1,6 +1,6 @@
 import { test as setup, expect } from "@playwright/test";
 
-const authFile = "e2e/.auth/user.json";
+const authFile = "tests/e2e/.auth/user.json";
 
 /**
  * Authenticate as admin@test.com via Keycloak OIDC flow.

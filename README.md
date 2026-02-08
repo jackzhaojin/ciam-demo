@@ -73,9 +73,10 @@ Open http://localhost:3000 and sign in with a test user:
 ## Testing
 
 ```bash
-cd claims-api && ./gradlew test    # 35 tests (unit + integration + security)
-cd claims-web && pnpm test         # Unit tests via Vitest
-bash ciam/test/verify-setup.sh     # Keycloak config validation
+cd claims-api && ./gradlew test              # 35 tests (unit + integration + security)
+cd claims-web && pnpm test                   # Unit tests via Vitest (tests/unit/)
+cd claims-web && pnpm exec playwright test   # E2E tests via Playwright (tests/e2e/)
+bash ciam/test/verify-setup.sh               # Keycloak config validation
 ```
 
 ## Deployment

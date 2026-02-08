@@ -30,7 +30,7 @@ claims-web/out/
 claims-web/.pnpm-store/
 
 # Playwright
-claims-web/e2e/.auth/
+claims-web/tests/e2e/.auth/
 claims-web/playwright-report/
 claims-web/test-results/
 
