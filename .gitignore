@@ -34,6 +34,9 @@ claims-web/tests/e2e/.auth/
 claims-web/playwright-report/
 claims-web/test-results/
 
+# Demo video output
+claims-web/demo-output/
+
 # Docker
 *.log
 
