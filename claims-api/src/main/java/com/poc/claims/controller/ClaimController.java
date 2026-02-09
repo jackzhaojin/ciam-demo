@@ -85,6 +85,37 @@ public class ClaimController {
         return ResponseEntity.ok(claims);
     }
 
+    @GetMapping("/stats")
+    public ResponseEntity<ClaimStatsResponse> getClaimStats(HttpServletRequest httpRequest) {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        return ResponseEntity.ok(claimService.getClaimStats(orgContext));
+    }
+
+    @GetMapping("/export")
+    public void exportClaims(HttpServletRequest httpRequest, HttpServletResponse response) throws IOException {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        List<Claim> claims = claimService.listAllClaims(orgContext);
+
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=\"claims-export.csv\"");
+
+        PrintWriter writer = response.getWriter();
+        writer.println("Claim Number,Type,Status,Amount,Incident Date,Filed Date,Priority");
+        for (Claim claim : claims) {
+            var pr = com.poc.claims.service.PriorityCalculator.calculate(
+                    claim.getType(), claim.getAmount(), claim.getFiledDate(), claim.getStatus());
+            writer.printf("%s,%s,%s,%s,%s,%s,%s%n",
+                    claim.getClaimNumber(),
+                    claim.getType(),
+                    claim.getStatus(),
+                    claim.getAmount() != null ? claim.getAmount().toPlainString() : "",
+                    claim.getIncidentDate() != null ? claim.getIncidentDate().toString() : "",
+                    claim.getFiledDate() != null ? claim.getFiledDate().toString() : "",
+                    pr.priority());
+        }
+        writer.flush();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ClaimResponse> getClaim(
             @PathVariable UUID id,
@@ -170,12 +201,6 @@ public class ClaimController {
 
     // --- v1.2 endpoints ---
 
-    @GetMapping("/stats")
-    public ResponseEntity<ClaimStatsResponse> getClaimStats(HttpServletRequest httpRequest) {
-        OrgContext orgContext = getOrgContext(httpRequest);
-        return ResponseEntity.ok(claimService.getClaimStats(orgContext));
-    }
-
     @GetMapping("/{id}/risk-signals")
     public ResponseEntity<RiskSignalResponse> getRiskSignals(
             @PathVariable UUID id,
@@ -248,31 +273,6 @@ public class ClaimController {
         OrgContext orgContext = getOrgContext(httpRequest);
         claimAttachmentService.deleteAttachment(id, attachmentId, orgContext);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/export")
-    public void exportClaims(HttpServletRequest httpRequest, HttpServletResponse response) throws IOException {
-        OrgContext orgContext = getOrgContext(httpRequest);
-        List<Claim> claims = claimService.listAllClaims(orgContext);
-
-        response.setContentType("text/csv");
-        response.setHeader("Content-Disposition", "attachment; filename=\"claims-export.csv\"");
-
-        PrintWriter writer = response.getWriter();
-        writer.println("Claim Number,Type,Status,Amount,Incident Date,Filed Date,Priority");
-        for (Claim claim : claims) {
-            var pr = com.poc.claims.service.PriorityCalculator.calculate(
-                    claim.getType(), claim.getAmount(), claim.getFiledDate(), claim.getStatus());
-            writer.printf("%s,%s,%s,%s,%s,%s,%s%n",
-                    claim.getClaimNumber(),
-                    claim.getType(),
-                    claim.getStatus(),
-                    claim.getAmount() != null ? claim.getAmount().toPlainString() : "",
-                    claim.getIncidentDate() != null ? claim.getIncidentDate().toString() : "",
-                    claim.getFiledDate() != null ? claim.getFiledDate().toString() : "",
-                    pr.priority());
-        }
-        writer.flush();
     }
 
     private OrgContext getOrgContext(HttpServletRequest request) {

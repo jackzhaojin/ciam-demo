@@ -52,8 +52,7 @@ export function ClaimTimeline({ events }: { events: ClaimEvent[] }) {
       {displayEvents.map((event, index) => {
         const config = eventConfig[event.eventType?.toUpperCase()] ?? eventConfig.CREATED;
         const Icon = config.icon;
-        const displayName =
-          event.actorDisplayName ?? event.performedByName ?? event.performedBy;
+        const displayName = event.actorDisplayName ?? "System";
 
         return (
           <div key={event.id} className="flex gap-4">
@@ -69,13 +68,13 @@ export function ClaimTimeline({ events }: { events: ClaimEvent[] }) {
               <p className="text-sm font-medium">
                 {event.eventType.replace(/_/g, " ")}
               </p>
-              {event.description && (
+              {event.note && (
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {event.description}
+                  {event.note}
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                {displayName} &middot; {formatRelativeTime(event.createdAt)}
+                {displayName} &middot; {formatRelativeTime(event.timestamp)}
               </p>
             </div>
           </div>

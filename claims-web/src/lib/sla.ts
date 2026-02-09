@@ -32,7 +32,7 @@ export function computeSla(claim: Claim, events?: ClaimEvent[]): SlaResult {
       return false;
     });
     enteredAt = statusEvent
-      ? new Date(statusEvent.createdAt).getTime()
+      ? new Date(statusEvent.timestamp).getTime()
       : new Date(claim.updatedAt).getTime();
   } else {
     enteredAt = new Date(claim.updatedAt).getTime();

@@ -9,44 +9,42 @@ describe("ClaimTimeline", () => {
     expect(screen.getByText("No events recorded yet.")).toBeInTheDocument();
   });
 
-  it("renders events with event type and description", () => {
+  it("renders events with event type and note", () => {
     const events: ClaimEvent[] = [
       {
         id: "evt-1",
         claimId: "claim-1",
-        eventType: "CLAIM_CREATED",
-        description: "Claim was created",
-        performedBy: "user-1",
-        performedByName: "John Doe",
-        createdAt: "2025-01-15T10:00:00Z",
+        eventType: "CREATED",
+        actorUserId: "user-1",
+        actorDisplayName: "John Doe",
+        note: "Claim was created",
+        timestamp: "2025-01-15T10:00:00Z",
       },
       {
         id: "evt-2",
         claimId: "claim-1",
-        eventType: "STATUS_CHANGED",
-        description: "Status changed to SUBMITTED",
-        performedBy: "user-1",
-        performedByName: "John Doe",
-        createdAt: "2025-01-15T11:00:00Z",
+        eventType: "SUBMITTED",
+        actorUserId: "user-1",
+        actorDisplayName: "John Doe",
+        timestamp: "2025-01-15T11:00:00Z",
       },
     ];
 
     render(<ClaimTimeline events={events} />);
-    expect(screen.getByText("CLAIM CREATED")).toBeInTheDocument();
+    expect(screen.getByText("CREATED")).toBeInTheDocument();
     expect(screen.getByText("Claim was created")).toBeInTheDocument();
-    expect(screen.getByText("STATUS CHANGED")).toBeInTheDocument();
+    expect(screen.getByText("SUBMITTED")).toBeInTheDocument();
   });
 
-  it("shows performer name when available", () => {
+  it("shows actor display name when available", () => {
     const events: ClaimEvent[] = [
       {
         id: "evt-1",
         claimId: "claim-1",
         eventType: "REVIEWED",
-        description: "Reviewed by admin",
-        performedBy: "user-2",
-        performedByName: "Admin User",
-        createdAt: "2025-01-16T09:00:00Z",
+        actorUserId: "user-2",
+        actorDisplayName: "Admin User",
+        timestamp: "2025-01-16T09:00:00Z",
       },
     ];
 

@@ -33,11 +33,10 @@ export interface ClaimEvent {
   id: string;
   claimId: string;
   eventType: string;
+  actorUserId: string;
   actorDisplayName?: string;
-  description: string;
-  performedBy: string;
-  performedByName?: string;
-  createdAt: string;
+  note?: string;
+  timestamp: string;
 }
 
 export interface CreateClaimRequest {

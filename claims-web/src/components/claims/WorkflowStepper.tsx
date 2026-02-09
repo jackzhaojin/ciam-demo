@@ -70,7 +70,7 @@ export function WorkflowStepper({
               </span>
               {timestamp && (
                 <span className="text-[10px] text-muted-foreground">
-                  {new Date(timestamp.createdAt).toLocaleDateString()}
+                  {new Date(timestamp.timestamp).toLocaleDateString()}
                 </span>
               )}
             </div>
