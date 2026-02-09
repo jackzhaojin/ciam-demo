@@ -11,10 +11,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/claims/StatusBadge";
+import { PriorityBadge } from "@/components/claims/PriorityBadge";
+import { SlaBadge } from "@/components/claims/SlaBadge";
 import { AdminActions } from "./AdminActions";
 import { getOrgRoles } from "@/lib/permissions";
 import { apiClient } from "@/lib/api";
-import type { Claim, ClaimsPage } from "@/types/claim";
+import { computeSla } from "@/lib/sla";
+import { formatCurrency } from "@/lib/format";
+import type { Claim, ClaimsPage, PriorityLevel } from "@/types/claim";
 
 async function fetchReviewQueue(): Promise<Claim[]> {
   const claims: Claim[] = [];
@@ -30,9 +34,8 @@ async function fetchReviewQueue(): Promise<Claim[]> {
     }
   }
 
-  claims.sort(
-    (a, b) => new Date(a.filedDate).getTime() - new Date(b.filedDate).getTime(),
-  );
+  // Sort by priority score (highest first)
+  claims.sort((a, b) => (b.priorityScore ?? 0) - (a.priorityScore ?? 0));
 
   return claims;
 }
@@ -41,7 +44,6 @@ export default async function AdminReviewPage() {
   const session = await auth();
   if (!session) redirect("/");
 
-  // Role-gate: only admins can access the review page
   const cookieStore = await cookies();
   const selectedOrgId = cookieStore.get("selectedOrgId")?.value ?? "";
   const roles = getOrgRoles(session.user?.organizations, selectedOrgId);
@@ -53,7 +55,9 @@ export default async function AdminReviewPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Admin Review Queue</h1>
+      <h1 className="text-2xl font-bold">
+        Review Queue{claims.length > 0 ? ` — ${claims.length} claims pending` : ""}
+      </h1>
 
       {claims.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
@@ -67,37 +71,48 @@ export default async function AdminReviewPage() {
                 <TableHead>Claim Number</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>SLA</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Filed Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {claims.map((claim) => (
-                <TableRow key={claim.id}>
-                  <TableCell>
-                    <Link
-                      href={`/claims/${claim.id}`}
-                      className="text-primary underline"
-                    >
-                      {claim.claimNumber}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{claim.type}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={claim.status} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ${claim.amount.toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(claim.filedDate).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <AdminActions claim={claim} />
-                  </TableCell>
-                </TableRow>
-              ))}
+              {claims.map((claim) => {
+                const sla = computeSla(claim);
+                return (
+                  <TableRow key={claim.id}>
+                    <TableCell>
+                      <Link
+                        href={`/claims/${claim.id}`}
+                        className="text-primary underline"
+                      >
+                        {claim.claimNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{claim.type}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={claim.status} />
+                    </TableCell>
+                    <TableCell>
+                      <PriorityBadge priority={claim.priority as PriorityLevel} />
+                    </TableCell>
+                    <TableCell>
+                      <SlaBadge status={sla.status} label={sla.label} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(claim.amount)}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(claim.filedDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <AdminActions claim={claim} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
