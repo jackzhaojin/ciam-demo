@@ -93,6 +93,17 @@ Each build produces two tags:
 - `:<version>` (e.g., `:v1.2.0`) — immutable version
 - `:latest` — always points to the most recent build
 
+## Version Reporting
+
+Both services expose a health endpoint that reports the deployed version:
+
+```
+curl :8080/api/health  → {"status":"UP","version":"v1.2.0"}
+curl :3001/api/health  → {"status":"UP","version":"v1.2.0"}
+```
+
+The version flows: **git tag → workflow `VERSION` env → Docker `build-args` → container `APP_VERSION` env var → health endpoint**. When built via tag push, the version matches the tag. When built via manual dispatch without a version, it defaults to the branch name (e.g., `main`).
+
 ## Infrastructure
 
 - **Build**: QEMU cross-compile on x86 runners → ARM64 images (~5 min web, ~14 min API with tests)
