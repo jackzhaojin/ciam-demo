@@ -218,6 +218,111 @@ class ClaimControllerTest {
             .andExpect(jsonPath("$.status").value("DENIED"));
     }
 
+    @Test
+    void getStats_shouldReturnAggregates() throws Exception {
+        // Create a claim first to ensure stats have data
+        CreateClaimRequest req = new CreateClaimRequest();
+        req.setType(ClaimType.AUTO);
+        req.setAmount(new BigDecimal("5000.00"));
+
+        mockMvc.perform(post("/api/claims")
+                .with(jwt().jwt(buildJwt(USER_ID, ORG_ID, List.of("admin"))))
+                .header("X-Organization-Id", ORG_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/claims/stats")
+                .with(jwt().jwt(buildJwt(USER_ID, ORG_ID, List.of("admin"))))
+                .header("X-Organization-Id", ORG_ID))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalClaims").isNumber())
+            .andExpect(jsonPath("$.openClaims").isNumber())
+            .andExpect(jsonPath("$.claimsByStatus").isMap())
+            .andExpect(jsonPath("$.claimsByType").isMap())
+            .andExpect(jsonPath("$.totalExposure").isNumber())
+            .andExpect(jsonPath("$.approvalRate").isNumber())
+            .andExpect(jsonPath("$.claimsThisWeek").isNumber())
+            .andExpect(jsonPath("$.claimsByPriority").isMap());
+    }
+
+    @Test
+    void getNotes_shouldReturnEmptyList() throws Exception {
+        // Create a claim
+        CreateClaimRequest req = new CreateClaimRequest();
+        req.setType(ClaimType.AUTO);
+
+        MvcResult result = mockMvc.perform(post("/api/claims")
+                .with(jwt().jwt(buildJwt(USER_ID, ORG_ID, List.of("admin"))))
+                .header("X-Organization-Id", ORG_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        String claimId = objectMapper.readTree(result.getResponse().getContentAsString())
+            .get("id").asText();
+
+        // Get notes (should be empty)
+        mockMvc.perform(get("/api/claims/" + claimId + "/notes")
+                .with(jwt().jwt(buildJwt(USER_ID, ORG_ID, List.of("admin"))))
+                .header("X-Organization-Id", ORG_ID))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void addNote_shouldCreateAndReturn() throws Exception {
+        // Create a claim
+        CreateClaimRequest req = new CreateClaimRequest();
+        req.setType(ClaimType.PROPERTY);
+
+        MvcResult result = mockMvc.perform(post("/api/claims")
+                .with(jwt().jwt(buildJwt(USER_ID, ORG_ID, List.of("admin"))))
+                .header("X-Organization-Id", ORG_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        String claimId = objectMapper.readTree(result.getResponse().getContentAsString())
+            .get("id").asText();
+
+        // Add a note
+        mockMvc.perform(post("/api/claims/" + claimId + "/notes")
+                .with(jwt().jwt(buildJwt(USER_ID, ORG_ID, List.of("admin"))))
+                .header("X-Organization-Id", ORG_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\": \"This is a test note\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.content").value("This is a test note"))
+            .andExpect(jsonPath("$.authorDisplayName").isNotEmpty());
+
+        // Verify note exists
+        mockMvc.perform(get("/api/claims/" + claimId + "/notes")
+                .with(jwt().jwt(buildJwt(USER_ID, ORG_ID, List.of("admin"))))
+                .header("X-Organization-Id", ORG_ID))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].content").value("This is a test note"));
+    }
+
+    @Test
+    void claimResponse_shouldIncludePriority() throws Exception {
+        CreateClaimRequest req = new CreateClaimRequest();
+        req.setType(ClaimType.LIABILITY);
+        req.setAmount(new BigDecimal("75000.00"));
+
+        mockMvc.perform(post("/api/claims")
+                .with(jwt().jwt(buildJwt(USER_ID, ORG_ID, List.of("admin"))))
+                .header("X-Organization-Id", ORG_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.priority").isNotEmpty())
+            .andExpect(jsonPath("$.priorityScore").isNumber());
+    }
+
     private org.springframework.security.oauth2.jwt.Jwt buildJwt(String sub, String orgId, List<String> roles) {
         Map<String, Object> orgData = new HashMap<>();
         orgData.put("name", "test-org");
