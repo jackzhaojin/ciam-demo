@@ -1,6 +1,7 @@
 package com.poc.claims.service;
 
 import com.poc.claims.config.OrgContext;
+import com.poc.claims.dto.ClaimStatsResponse;
 import com.poc.claims.dto.CreateClaimRequest;
 import com.poc.claims.dto.UpdateClaimRequest;
 import com.poc.claims.model.*;
@@ -11,10 +12,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.Year;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class ClaimService {
@@ -177,10 +178,72 @@ public class ClaimService {
     }
 
     @Transactional(readOnly = true)
+    public List<Claim> listAllClaims(OrgContext orgContext) {
+        return claimRepository.findByOrganizationId(orgContext.getOrganizationId());
+    }
+
+    @Transactional(readOnly = true)
     public List<ClaimEvent> getClaimEvents(UUID claimId, OrgContext orgContext) {
         // Verify the claim belongs to the org
         getClaimForOrg(claimId, orgContext);
         return claimEventRepository.findByClaimIdOrderByTimestampAsc(claimId);
+    }
+
+    @Transactional(readOnly = true)
+    public ClaimStatsResponse getClaimStats(OrgContext orgContext) {
+        UUID orgId = orgContext.getOrganizationId();
+        ClaimStatsResponse stats = new ClaimStatsResponse();
+
+        long total = claimRepository.countByOrganizationId(orgId);
+        stats.setTotalClaims(total);
+
+        // Open claims = not CLOSED and not DENIED
+        long closedCount = claimRepository.countByOrganizationIdAndStatus(orgId, ClaimStatus.CLOSED);
+        long deniedCount = claimRepository.countByOrganizationIdAndStatus(orgId, ClaimStatus.DENIED);
+        stats.setOpenClaims(total - closedCount - deniedCount);
+
+        // Claims by status
+        Map<String, Long> byStatus = new LinkedHashMap<>();
+        for (ClaimStatus s : ClaimStatus.values()) {
+            byStatus.put(s.name(), claimRepository.countByOrganizationIdAndStatus(orgId, s));
+        }
+        stats.setClaimsByStatus(byStatus);
+
+        // Claims by type - compute from all claims
+        List<Claim> allClaims = claimRepository.findByOrganizationId(orgId);
+        Map<String, Long> byType = new LinkedHashMap<>();
+        for (ClaimType t : ClaimType.values()) {
+            byType.put(t.name(), allClaims.stream().filter(c -> c.getType() == t).count());
+        }
+        stats.setClaimsByType(byType);
+
+        // Total exposure (sum of open claim amounts)
+        BigDecimal exposure = claimRepository.sumAmountByOrganizationIdAndStatusNotIn(orgId,
+                List.of(ClaimStatus.CLOSED, ClaimStatus.DENIED));
+        stats.setTotalExposure(exposure);
+
+        // Approval rate
+        long approvedCount = claimRepository.countByOrganizationIdAndStatus(orgId, ClaimStatus.APPROVED);
+        long decidedCount = approvedCount + deniedCount + closedCount;
+        stats.setApprovalRate(decidedCount > 0 ? (double) approvedCount / decidedCount * 100.0 : 0.0);
+
+        // Claims this week
+        LocalDateTime weekAgo = LocalDateTime.now().minusDays(7);
+        stats.setClaimsThisWeek(claimRepository.countByOrganizationIdAndCreatedAtAfter(orgId, weekAgo));
+
+        // Claims by priority
+        Map<String, Long> byPriority = new LinkedHashMap<>();
+        byPriority.put("CRITICAL", 0L);
+        byPriority.put("HIGH", 0L);
+        byPriority.put("MEDIUM", 0L);
+        byPriority.put("LOW", 0L);
+        for (Claim c : allClaims) {
+            String priority = PriorityCalculator.calculate(c.getType(), c.getAmount(), c.getFiledDate(), c.getStatus()).priority();
+            byPriority.merge(priority, 1L, Long::sum);
+        }
+        stats.setClaimsByPriority(byPriority);
+
+        return stats;
     }
 
     private Claim getClaimForOrg(UUID claimId, OrgContext orgContext) {
@@ -189,9 +252,14 @@ public class ClaimService {
     }
 
     private void createEvent(UUID claimId, UUID actorUserId, EventType eventType, String note) {
+        createEvent(claimId, actorUserId, null, eventType, note);
+    }
+
+    private void createEvent(UUID claimId, UUID actorUserId, String actorDisplayName, EventType eventType, String note) {
         ClaimEvent event = new ClaimEvent();
         event.setClaimId(claimId);
         event.setActorUserId(actorUserId);
+        event.setActorDisplayName(actorDisplayName);
         event.setEventType(eventType);
         event.setNote(note);
         claimEventRepository.save(event);

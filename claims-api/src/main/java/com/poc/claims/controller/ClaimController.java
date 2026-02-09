@@ -4,9 +4,15 @@ import com.poc.claims.config.OrgContext;
 import com.poc.claims.config.OrgContextFilter;
 import com.poc.claims.dto.*;
 import com.poc.claims.model.Claim;
+import com.poc.claims.model.ClaimAttachment;
 import com.poc.claims.model.ClaimEvent;
+import com.poc.claims.model.ClaimNote;
+import com.poc.claims.service.ClaimAttachmentService;
+import com.poc.claims.service.ClaimNoteService;
 import com.poc.claims.service.ClaimService;
+import com.poc.claims.service.RiskSignalService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +23,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,9 +35,18 @@ import java.util.stream.Collectors;
 public class ClaimController {
 
     private final ClaimService claimService;
+    private final ClaimNoteService claimNoteService;
+    private final ClaimAttachmentService claimAttachmentService;
+    private final RiskSignalService riskSignalService;
 
-    public ClaimController(ClaimService claimService) {
+    public ClaimController(ClaimService claimService,
+                           ClaimNoteService claimNoteService,
+                           ClaimAttachmentService claimAttachmentService,
+                           RiskSignalService riskSignalService) {
         this.claimService = claimService;
+        this.claimNoteService = claimNoteService;
+        this.claimAttachmentService = claimAttachmentService;
+        this.riskSignalService = riskSignalService;
     }
 
     @PostMapping
@@ -151,6 +168,113 @@ public class ClaimController {
         return ResponseEntity.ok(events);
     }
 
+    // --- v1.2 endpoints ---
+
+    @GetMapping("/stats")
+    public ResponseEntity<ClaimStatsResponse> getClaimStats(HttpServletRequest httpRequest) {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        return ResponseEntity.ok(claimService.getClaimStats(orgContext));
+    }
+
+    @GetMapping("/{id}/risk-signals")
+    public ResponseEntity<RiskSignalResponse> getRiskSignals(
+            @PathVariable UUID id,
+            HttpServletRequest httpRequest) {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        Claim claim = claimService.getClaim(id, orgContext);
+        return ResponseEntity.ok(riskSignalService.assessRisk(claim, orgContext.getOrganizationId()));
+    }
+
+    @GetMapping("/{id}/notes")
+    public ResponseEntity<List<ClaimNoteResponse>> getClaimNotes(
+            @PathVariable UUID id,
+            HttpServletRequest httpRequest) {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        List<ClaimNoteResponse> notes = claimNoteService.getNotes(id, orgContext)
+                .stream()
+                .map(ClaimNoteResponse::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(notes);
+    }
+
+    @PostMapping("/{id}/notes")
+    public ResponseEntity<ClaimNoteResponse> addClaimNote(
+            @PathVariable UUID id,
+            @Valid @RequestBody CreateNoteRequest request,
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest httpRequest) {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        UUID userId = extractUserId(jwt);
+        String displayName = extractDisplayName(jwt);
+
+        ClaimNote note = claimNoteService.addNote(id, userId, displayName, request.getContent(), orgContext);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ClaimNoteResponse.fromEntity(note));
+    }
+
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<List<ClaimAttachmentResponse>> getClaimAttachments(
+            @PathVariable UUID id,
+            HttpServletRequest httpRequest) {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        List<ClaimAttachmentResponse> attachments = claimAttachmentService.getAttachments(id, orgContext)
+                .stream()
+                .map(ClaimAttachmentResponse::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(attachments);
+    }
+
+    @PostMapping("/{id}/attachments")
+    public ResponseEntity<ClaimAttachmentResponse> addClaimAttachment(
+            @PathVariable UUID id,
+            @Valid @RequestBody CreateAttachmentRequest request,
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest httpRequest) {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        UUID userId = extractUserId(jwt);
+        String displayName = extractDisplayName(jwt);
+
+        ClaimAttachment attachment = claimAttachmentService.addAttachment(
+                id, userId, displayName,
+                request.getFilename(), request.getFileSizeBytes(), request.getMimeType(),
+                orgContext);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ClaimAttachmentResponse.fromEntity(attachment));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attachmentId}")
+    public ResponseEntity<Void> deleteClaimAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attachmentId,
+            HttpServletRequest httpRequest) {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        claimAttachmentService.deleteAttachment(id, attachmentId, orgContext);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/export")
+    public void exportClaims(HttpServletRequest httpRequest, HttpServletResponse response) throws IOException {
+        OrgContext orgContext = getOrgContext(httpRequest);
+        List<Claim> claims = claimService.listAllClaims(orgContext);
+
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=\"claims-export.csv\"");
+
+        PrintWriter writer = response.getWriter();
+        writer.println("Claim Number,Type,Status,Amount,Incident Date,Filed Date,Priority");
+        for (Claim claim : claims) {
+            var pr = com.poc.claims.service.PriorityCalculator.calculate(
+                    claim.getType(), claim.getAmount(), claim.getFiledDate(), claim.getStatus());
+            writer.printf("%s,%s,%s,%s,%s,%s,%s%n",
+                    claim.getClaimNumber(),
+                    claim.getType(),
+                    claim.getStatus(),
+                    claim.getAmount() != null ? claim.getAmount().toPlainString() : "",
+                    claim.getIncidentDate() != null ? claim.getIncidentDate().toString() : "",
+                    claim.getFiledDate() != null ? claim.getFiledDate().toString() : "",
+                    pr.priority());
+        }
+        writer.flush();
+    }
+
     private OrgContext getOrgContext(HttpServletRequest request) {
         OrgContext orgContext = (OrgContext) request.getAttribute(OrgContextFilter.ORG_CONTEXT_ATTRIBUTE);
         if (orgContext == null) {
@@ -175,5 +299,13 @@ public class ClaimController {
             throw new IllegalStateException("JWT has neither 'sub' nor 'email' claim");
         }
         return UUID.nameUUIDFromBytes(email.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private String extractDisplayName(Jwt jwt) {
+        String name = jwt.getClaimAsString("name");
+        if (name != null) return name;
+        String email = jwt.getClaimAsString("email");
+        if (email != null) return email;
+        return "Unknown";
     }
 }

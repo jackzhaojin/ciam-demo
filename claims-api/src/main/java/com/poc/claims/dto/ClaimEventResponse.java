@@ -12,6 +12,7 @@ public class ClaimEventResponse {
     private UUID claimId;
     private UUID actorUserId;
     private EventType eventType;
+    private String actorDisplayName;
     private String note;
     private LocalDateTime timestamp;
 
@@ -23,6 +24,7 @@ public class ClaimEventResponse {
         response.setClaimId(event.getClaimId());
         response.setActorUserId(event.getActorUserId());
         response.setEventType(event.getEventType());
+        response.setActorDisplayName(event.getActorDisplayName());
         response.setNote(event.getNote());
         response.setTimestamp(event.getTimestamp());
         return response;
@@ -44,6 +46,9 @@ public class ClaimEventResponse {
 
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
+
+    public String getActorDisplayName() { return actorDisplayName; }
+    public void setActorDisplayName(String actorDisplayName) { this.actorDisplayName = actorDisplayName; }
 
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }

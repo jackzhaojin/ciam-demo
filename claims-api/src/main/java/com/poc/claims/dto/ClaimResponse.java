@@ -3,6 +3,7 @@ package com.poc.claims.dto;
 import com.poc.claims.model.Claim;
 import com.poc.claims.model.ClaimStatus;
 import com.poc.claims.model.ClaimType;
+import com.poc.claims.service.PriorityCalculator;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,6 +24,8 @@ public class ClaimResponse {
     private BigDecimal amount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String priority;
+    private int priorityScore;
 
     public ClaimResponse() {}
 
@@ -40,6 +43,12 @@ public class ClaimResponse {
         response.setAmount(claim.getAmount());
         response.setCreatedAt(claim.getCreatedAt());
         response.setUpdatedAt(claim.getUpdatedAt());
+
+        PriorityCalculator.PriorityResult pr = PriorityCalculator.calculate(
+                claim.getType(), claim.getAmount(), claim.getFiledDate(), claim.getStatus());
+        response.setPriority(pr.priority());
+        response.setPriorityScore(pr.score());
+
         return response;
     }
 
@@ -80,4 +89,10 @@ public class ClaimResponse {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getPriority() { return priority; }
+    public void setPriority(String priority) { this.priority = priority; }
+
+    public int getPriorityScore() { return priorityScore; }
+    public void setPriorityScore(int priorityScore) { this.priorityScore = priorityScore; }
 }

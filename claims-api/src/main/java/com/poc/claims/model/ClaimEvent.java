@@ -24,6 +24,9 @@ public class ClaimEvent {
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
 
+    @Column(name = "actor_display_name")
+    private String actorDisplayName;
+
     @Column(name = "timestamp", nullable = false)
     private LocalDateTime timestamp;
 
@@ -51,6 +54,9 @@ public class ClaimEvent {
 
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
+
+    public String getActorDisplayName() { return actorDisplayName; }
+    public void setActorDisplayName(String actorDisplayName) { this.actorDisplayName = actorDisplayName; }
 
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
