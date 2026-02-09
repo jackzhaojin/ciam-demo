@@ -11,6 +11,10 @@ on:
         options:
           - deploy
           - restart
+      version:
+        description: 'Image version to deploy (e.g., v1.0.0)'
+        required: false
+        default: 'latest'
 
 env:
   IMAGE: ghcr.io/jackzhaojin/ciam-claims-api
@@ -34,8 +38,8 @@ jobs:
             docker compose ps
             docker compose logs --tail=20 claims-api
 
-  deploy-latest:
-    name: Deploy Latest Image
+  deploy:
+    name: Deploy ${{ inputs.version }}
     runs-on: ubuntu-latest
     if: github.event.inputs.action_type == 'deploy'
     steps:
@@ -47,6 +51,13 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
             cd ${{ env.DEPLOY_DIR }} || exit 1
+            VERSION="${{ inputs.version }}"
+            IMAGE="${{ env.IMAGE }}"
+            if [ "$VERSION" != "latest" ]; then
+              echo "Pulling specific version: $IMAGE:$VERSION"
+              docker pull "$IMAGE:$VERSION"
+              docker tag "$IMAGE:$VERSION" "$IMAGE:latest"
+            fi
             docker compose pull claims-api
             docker compose up -d --no-deps claims-api
             docker image prune -af --filter "until=24h"
