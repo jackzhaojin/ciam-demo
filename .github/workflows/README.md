@@ -5,10 +5,12 @@
 ```
 gh release create v1.2.0 --generate-notes
   └─> tag v1.2.0 pushed to GitHub
-        ├─> claims-api.yml:  test → build → deploy (via workflow_call)
-        └─> claims-web.yml:  build → deploy (via workflow_call)
-                                       │
-                          deploy-only-*.yml  ← single source of truth
+        ├─> claims-api.yml:  test → build ─┬─> deploy (via workflow_call)
+        │                                  └─> update-release (appends image link)
+        └─> claims-web.yml:  build ─┬─> deploy (via workflow_call)
+                                    └─> update-release (appends image link)
+                                │
+                   deploy-only-*.yml  ← single source of truth for deploy logic
 ```
 
 ### Design Decisions
@@ -41,6 +43,12 @@ This single command:
 3. Tag push triggers both build workflows
 4. Images pushed to GHCR as `ciam-claims-api:v1.2.0` and `ciam-claims-web:v1.2.0`
 5. Both services deployed to the Oracle VM
+6. Each build's `update-release` job appends its container image link to the release notes
+
+The `update-release` job runs after a successful build on tag pushes only. It fetches the
+current release body, checks if the image link is already present, and appends it if not.
+Since claims-web (~5 min) finishes before claims-api (~14 min), the release notes get
+updated incrementally — web's image link first, then API's. No race condition in practice.
 
 ### Build without deploying (manual dispatch)
 
