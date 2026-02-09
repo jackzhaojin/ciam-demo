@@ -15,8 +15,15 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/claims/StatusBadge";
+import { PriorityBadge } from "@/components/claims/PriorityBadge";
+import { SlaBadge } from "@/components/claims/SlaBadge";
+import { KpiCards } from "@/components/claims/KpiCards";
+import { SlaAlertBanner } from "@/components/claims/SlaAlertBanner";
+import { ClaimsChart } from "@/components/claims/ClaimsChart";
 import { apiClient } from "@/lib/api";
-import type { ClaimsPage, ClaimStatus } from "@/types/claim";
+import { computeSla } from "@/lib/sla";
+import { formatCurrency } from "@/lib/format";
+import type { ClaimsPage, ClaimStats, ClaimStatus, PriorityLevel } from "@/types/claim";
 
 const statusTabs: { value: string; label: string }[] = [
   { value: "ALL", label: "All" },
@@ -44,6 +51,14 @@ async function fetchClaims(
   }
 }
 
+async function fetchStats(): Promise<ClaimStats | null> {
+  try {
+    return await apiClient<ClaimStats>("/api/claims/stats");
+  } catch {
+    return null;
+  }
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -55,7 +70,11 @@ export default async function DashboardPage({
   const params = await searchParams;
   const status = params.status ?? "ALL";
   const page = parseInt(params.page ?? "0", 10);
-  const data = await fetchClaims(status, page);
+
+  const [data, stats] = await Promise.all([
+    fetchClaims(status, page),
+    fetchStats(),
+  ]);
 
   const cookieStore = await cookies();
   const orgId = cookieStore.get("selectedOrgId")?.value ?? "";
@@ -65,12 +84,22 @@ export default async function DashboardPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Claims Dashboard</h1>
-        {showCreateButton && (
-          <Link href="/claims/new">
-            <Button>File New Claim</Button>
-          </Link>
-        )}
+        <div className="flex gap-2">
+          {showCreateButton && (
+            <Link href="/claims/new">
+              <Button>File New Claim</Button>
+            </Link>
+          )}
+        </div>
       </div>
+
+      {stats && <KpiCards stats={stats} />}
+
+      {data && data.content.length > 0 && (
+        <SlaAlertBanner claims={data.content} />
+      )}
+
+      {stats && <ClaimsChart stats={stats} />}
 
       <Tabs defaultValue={status}>
         <TabsList>
@@ -109,33 +138,44 @@ export default async function DashboardPage({
                       <TableHead>Claim Number</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>SLA</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Filed Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.content.map((claim) => (
-                      <TableRow key={claim.id}>
-                        <TableCell>
-                          <Link
-                            href={`/claims/${claim.id}`}
-                            className="text-primary underline"
-                          >
-                            {claim.claimNumber}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{claim.type}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={claim.status as ClaimStatus} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          ${claim.amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(claim.filedDate).toLocaleDateString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {data.content.map((claim) => {
+                      const sla = computeSla(claim);
+                      return (
+                        <TableRow key={claim.id}>
+                          <TableCell>
+                            <Link
+                              href={`/claims/${claim.id}`}
+                              className="text-primary underline"
+                            >
+                              {claim.claimNumber}
+                            </Link>
+                          </TableCell>
+                          <TableCell>{claim.type}</TableCell>
+                          <TableCell>
+                            <StatusBadge status={claim.status as ClaimStatus} />
+                          </TableCell>
+                          <TableCell>
+                            <PriorityBadge priority={claim.priority as PriorityLevel} />
+                          </TableCell>
+                          <TableCell>
+                            <SlaBadge status={sla.status} label={sla.label} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(claim.amount)}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(claim.filedDate).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
