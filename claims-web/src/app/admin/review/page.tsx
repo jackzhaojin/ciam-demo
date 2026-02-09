@@ -1,5 +1,6 @@
 import { auth } from "../../../../auth";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import {
@@ -29,7 +30,8 @@ async function fetchReviewQueue(): Promise<Claim[]> {
         `/api/claims?status=${status}&size=50&sort=filedDate,asc`,
       );
       claims.push(...page.content);
-    } catch {
+    } catch (err) {
+      if (isRedirectError(err)) throw err;
       // continue
     }
   }

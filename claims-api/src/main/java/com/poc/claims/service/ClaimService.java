@@ -173,7 +173,10 @@ public class ClaimService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Claim> listClaims(OrgContext orgContext, Pageable pageable) {
+    public Page<Claim> listClaims(OrgContext orgContext, ClaimStatus status, Pageable pageable) {
+        if (status != null) {
+            return claimRepository.findByOrganizationIdAndStatus(orgContext.getOrganizationId(), status, pageable);
+        }
         return claimRepository.findByOrganizationId(orgContext.getOrganizationId(), pageable);
     }
 

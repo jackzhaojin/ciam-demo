@@ -1,5 +1,6 @@
 import { auth } from "../../../../auth";
 import { redirect, notFound } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { cookies } from "next/headers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/claims/StatusBadge";
@@ -26,7 +27,8 @@ import type {
 async function fetchClaim(id: string): Promise<Claim | null> {
   try {
     return await apiClient<Claim>(`/api/claims/${id}`);
-  } catch {
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
     return null;
   }
 }
@@ -34,7 +36,8 @@ async function fetchClaim(id: string): Promise<Claim | null> {
 async function fetchEvents(id: string): Promise<ClaimEvent[]> {
   try {
     return await apiClient<ClaimEvent[]>(`/api/claims/${id}/events`);
-  } catch {
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
     return [];
   }
 }
@@ -42,7 +45,8 @@ async function fetchEvents(id: string): Promise<ClaimEvent[]> {
 async function fetchRiskSignals(id: string): Promise<RiskSignalsResponse | null> {
   try {
     return await apiClient<RiskSignalsResponse>(`/api/claims/${id}/risk-signals`);
-  } catch {
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
     return null;
   }
 }
@@ -50,7 +54,8 @@ async function fetchRiskSignals(id: string): Promise<RiskSignalsResponse | null>
 async function fetchNotes(id: string): Promise<ClaimNote[]> {
   try {
     return await apiClient<ClaimNote[]>(`/api/claims/${id}/notes`);
-  } catch {
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
     return [];
   }
 }
@@ -58,7 +63,8 @@ async function fetchNotes(id: string): Promise<ClaimNote[]> {
 async function fetchAttachments(id: string): Promise<ClaimAttachment[]> {
   try {
     return await apiClient<ClaimAttachment[]>(`/api/claims/${id}/attachments`);
-  } catch {
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
     return [];
   }
 }

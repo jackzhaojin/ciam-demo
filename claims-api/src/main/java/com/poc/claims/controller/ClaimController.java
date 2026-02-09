@@ -7,6 +7,7 @@ import com.poc.claims.model.Claim;
 import com.poc.claims.model.ClaimAttachment;
 import com.poc.claims.model.ClaimEvent;
 import com.poc.claims.model.ClaimNote;
+import com.poc.claims.model.ClaimStatus;
 import com.poc.claims.service.ClaimAttachmentService;
 import com.poc.claims.service.ClaimNoteService;
 import com.poc.claims.service.ClaimService;
@@ -76,11 +77,17 @@ public class ClaimController {
 
     @GetMapping
     public ResponseEntity<Page<ClaimResponse>> listClaims(
+            @RequestParam(required = false) String status,
             @PageableDefault(size = 20) Pageable pageable,
             HttpServletRequest httpRequest) {
         OrgContext orgContext = getOrgContext(httpRequest);
 
-        Page<ClaimResponse> claims = claimService.listClaims(orgContext, pageable)
+        ClaimStatus claimStatus = null;
+        if (status != null && !status.isEmpty()) {
+            claimStatus = ClaimStatus.valueOf(status);
+        }
+
+        Page<ClaimResponse> claims = claimService.listClaims(orgContext, claimStatus, pageable)
             .map(ClaimResponse::fromEntity);
         return ResponseEntity.ok(claims);
     }

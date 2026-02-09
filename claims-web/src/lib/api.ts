@@ -56,7 +56,7 @@ export async function apiClient<T>(
   });
 
   if (response.status === 401) {
-    redirect("/");
+    redirect("/?error=session_expired");
   }
 
   if (response.status === 403) {

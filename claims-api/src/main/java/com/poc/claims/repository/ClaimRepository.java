@@ -20,6 +20,8 @@ public interface ClaimRepository extends JpaRepository<Claim, UUID> {
 
     Page<Claim> findByOrganizationId(UUID organizationId, Pageable pageable);
 
+    Page<Claim> findByOrganizationIdAndStatus(UUID organizationId, ClaimStatus status, Pageable pageable);
+
     Optional<Claim> findByIdAndOrganizationId(UUID id, UUID organizationId);
 
     @Query("SELECT COUNT(c) FROM Claim c WHERE c.claimNumber LIKE :prefix%")

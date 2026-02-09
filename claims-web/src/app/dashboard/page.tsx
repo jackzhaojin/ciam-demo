@@ -1,5 +1,6 @@
 import { auth } from "../../../auth";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,8 @@ async function fetchClaims(
 
   try {
     return await apiClient<ClaimsPage>(`/api/claims?${params.toString()}`);
-  } catch {
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
     return null;
   }
 }
@@ -55,7 +57,8 @@ async function fetchClaims(
 async function fetchStats(): Promise<ClaimStats | null> {
   try {
     return await apiClient<ClaimStats>("/api/claims/stats");
-  } catch {
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
     return null;
   }
 }
