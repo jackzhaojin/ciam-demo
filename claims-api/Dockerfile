@@ -9,6 +9,8 @@ RUN ./gradlew bootJar -x test --no-daemon
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre
+ARG APP_VERSION=unknown
+ENV APP_VERSION=$APP_VERSION
 WORKDIR /app
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY --from=build /app/build/libs/*.jar app.jar

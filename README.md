@@ -83,6 +83,8 @@ bash ciam/test/verify-setup.sh               # Keycloak config validation
 
 GitHub Actions builds ARM64 Docker images, pushes to GHCR, and deploys to an Oracle VM via SSH. See [`.github/workflows/`](.github/workflows/) for CI/CD pipelines.
 
+Both services report their deployed version via health endpoints (`/api/health`). The version is set at Docker build time from the release tag.
+
 Production environment variables live in `.env` on the VM only (not in GitHub Secrets beyond SSH credentials). See each sub-project's README for Docker details.
 
 ## Key Concepts

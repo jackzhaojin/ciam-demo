@@ -15,6 +15,8 @@ RUN pnpm build
 
 # Stage 3: Run
 FROM node:22-alpine
+ARG APP_VERSION=unknown
+ENV APP_VERSION=$APP_VERSION
 WORKDIR /app
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 COPY --from=build /app/.next/standalone ./
