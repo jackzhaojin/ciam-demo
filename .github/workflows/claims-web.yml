@@ -1,15 +1,13 @@
 name: Claims Web
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'claims-web/**'
-      - '.github/workflows/claims-web.yml'
+  release:
+    types: [published]
   workflow_dispatch:
 
 env:
   IMAGE: ghcr.io/jackzhaojin/ciam-claims-web
+  VERSION: ${{ github.event.release.tag_name || github.ref_name }}
 
 jobs:
   build-and-push:
@@ -34,7 +32,7 @@ jobs:
           provenance: false
           tags: |
             ${{ env.IMAGE }}:latest
-            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:${{ env.VERSION }}
 
   deploy:
     needs: build-and-push
