@@ -1,6 +1,11 @@
 name: Deploy Only - Claims Web
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        default: 'latest'
   workflow_dispatch:
     inputs:
       action_type:
@@ -24,7 +29,7 @@ jobs:
   restart-only:
     name: Restart Container
     runs-on: ubuntu-latest
-    if: github.event.inputs.action_type == 'restart'
+    if: inputs.action_type == 'restart'
     steps:
       - name: Restart container on Oracle VM
         uses: appleboy/ssh-action@v1
@@ -41,7 +46,7 @@ jobs:
   deploy:
     name: Deploy ${{ inputs.version }}
     runs-on: ubuntu-latest
-    if: github.event.inputs.action_type == 'deploy'
+    if: inputs.action_type != 'restart'
     steps:
       - name: Deploy to Oracle VM
         uses: appleboy/ssh-action@v1

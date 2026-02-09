@@ -52,58 +52,28 @@ jobs:
   deploy:
     needs: build-and-push
     if: github.event_name != 'workflow_dispatch' || inputs.deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to Oracle VM
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }}
-          key: ${{ secrets.ORACLE_SSH_KEY }}
-          script: |
-            cd ~/jack-dev-server-configs/server/oracle-arm4-free-vm/deploy-ciam || exit 1
-            docker compose pull claims-web
-            docker compose up -d --no-deps claims-web
-            docker image prune -af --filter "until=24h"
-            docker compose ps
+    uses: ./.github/workflows/deploy-only-claims-web.yml
+    with:
+      version: ${{ inputs.version || github.ref_name }}
+    secrets: inherit
 
-      - name: Verify deployment
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }}
-          key: ${{ secrets.ORACLE_SSH_KEY }}
-          script: |
-            cd ~/jack-dev-server-configs/server/oracle-arm4-free-vm/deploy-ciam
-            echo "Waiting for claims-web to be healthy..."
-            for i in $(seq 1 30); do
-              HEALTH=$(docker inspect --format='{{.State.Health.Status}}' ciam-claims-web 2>/dev/null || echo "starting")
-              echo "Health check attempt $i: $HEALTH"
-              if [ "$HEALTH" = "healthy" ]; then
-                echo "claims-web is healthy!"
-                exit 0
-              fi
-              sleep 2
-            done
-            echo "claims-web failed to become healthy"
-            docker compose logs --tail=100 claims-web
-            exit 1
-
-  create-release:
+  update-release:
     needs: build-and-push
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Create GitHub Release
+      - name: Add container image to release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create ${{ github.ref_name }} \
-            --title "${{ github.ref_name }}" \
-            --generate-notes \
-            || echo "Release already exists for ${{ github.ref_name }}"
+          TAG="${{ github.ref_name }}"
+          IMAGE="${{ env.IMAGE }}:${TAG}"
+          BODY=$(gh release view "$TAG" --json body -q .body --repo ${{ github.repository }})
+          if ! echo "$BODY" | grep -q "$IMAGE"; then
+            gh release edit "$TAG" \
+              --notes "${BODY}
+          - \`${IMAGE}\`" \
+              --repo ${{ github.repository }}
+          fi
