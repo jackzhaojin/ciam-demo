@@ -12,12 +12,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import { OrgSwitcher } from "./OrgSwitcher";
+import { useOrg } from "@/lib/org-context";
+import { getOrgRoles } from "@/lib/permissions";
 import Link from "next/link";
 
 export function Header() {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
+  const { selectedOrgId } = useOrg();
+
+  const roles = getOrgRoles(session?.user?.organizations, selectedOrgId ?? "");
+  const primaryRole = roles.includes("admin")
+    ? "Admin"
+    : roles.includes("billing")
+      ? "Billing"
+      : roles.includes("viewer")
+        ? "Viewer"
+        : null;
 
   const initials = session?.user?.name
     ? session.user.name
@@ -61,7 +74,14 @@ export function Header() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <div className="px-2 py-1.5">
-                <p className="text-sm font-medium">{session.user?.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">{session.user?.name}</p>
+                  {primaryRole && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      {primaryRole}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">{session.user?.email}</p>
               </div>
               <DropdownMenuSeparator />

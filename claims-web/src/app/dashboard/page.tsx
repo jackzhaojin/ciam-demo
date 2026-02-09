@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { isAdmin } from "@/lib/permissions";
+import { Download } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -85,6 +86,12 @@ export default async function DashboardPage({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Claims Dashboard</h1>
         <div className="flex gap-2">
+          <a href="/api/claims/export" download>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-1" />
+              Export CSV
+            </Button>
+          </a>
           {showCreateButton && (
             <Link href="/claims/new">
               <Button>File New Claim</Button>

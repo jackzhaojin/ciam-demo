@@ -20,9 +20,16 @@ export function Sidebar() {
 
   const orgId = selectedOrgId ?? "";
   const showAdmin = isAdmin(session, orgId);
+  const { selectedOrg } = useOrg();
+  const contractTier = selectedOrg?.attributes?.contractTier;
 
   return (
     <aside className="w-56 border-r bg-muted/30 p-4">
+      {contractTier && (
+        <div className="mb-4 px-3 py-2 rounded-md bg-muted text-xs text-muted-foreground">
+          Tier: <span className="font-medium capitalize">{contractTier}</span>
+        </div>
+      )}
       <nav className="space-y-1">
         {navItems
           .filter((item) => !item.requiresAdmin || showAdmin)
