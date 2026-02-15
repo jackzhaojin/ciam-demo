@@ -8,6 +8,8 @@ Users authenticate via Keycloak (Phase Two), select an organization, and manage 
 
 **Live deployment:** Oracle ARM64 VM with Docker Compose.
 
+**Demo video (v1.2.1):** https://youtu.be/DIWQCDbMUM8
+
 ## Architecture
 
 ```
