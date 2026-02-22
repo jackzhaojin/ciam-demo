@@ -1,6 +1,43 @@
 # Auth Patterns (v1.3)
 
-Five flows for this demo. Diagram 1 gets auth code with PKCE. Diagrams 2 to 5 show the four Java validation paths.
+Six flows for this demo. Diagram 0 is the default BFF login from v1.0–1.2 where the user enters their password directly in Keycloak. Diagram 1 gets auth code with PKCE. Diagrams 2 to 5 show the four Java validation paths.
+
+## 0) Standard BFF login: password entered in Keycloak (v1.0–1.2 default)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser
+    participant NextJS as NextJS Server (Auth.js)
+    participant CIAM as CIAM Keycloak
+    participant Java as Spring Boot Claims API
+
+    User->>Browser: Click "Sign In with Keycloak"
+    Browser->>NextJS: GET /api/auth/signin
+    NextJS->>CIAM: Redirect to /auth (authorize endpoint)
+    CIAM-->>Browser: Keycloak hosted login page
+    User->>CIAM: Enter email and password directly in Keycloak
+    CIAM-->>NextJS: Redirect with auth code
+    NextJS->>CIAM: POST /token (code + client_secret)
+    CIAM-->>NextJS: access token + refresh token + id token
+    NextJS->>NextJS: Store tokens in encrypted HTTP-only cookie
+    NextJS-->>Browser: Set session cookie, redirect to /dashboard
+    Browser->>NextJS: Request /dashboard
+    NextJS->>Java: GET /api/claims (Bearer token + X-Organization-Id)
+    Java-->>NextJS: Claims data
+    NextJS-->>Browser: Rendered page
+```
+
+The standard flow. Password never touches the app — it goes straight to the Keycloak hosted page. Auth.js handles the OIDC handshake server-side and locks tokens in an encrypted cookie. The browser never sees a raw token. This is the BFF (Backend-for-Frontend) pattern used by the claims portal for all normal operations.
+
+| Key file | Role |
+|---|---|
+| `claims-web/auth.ts` | Auth.js config: Keycloak provider, jwt/session callbacks, token refresh |
+| `claims-web/middleware.ts` | Route protection for /dashboard, /claims, /admin, /profile, /dev |
+| `claims-web/src/lib/api.ts` | Server-only API client: reads session for Bearer token + org header |
+| `claims-api/.../config/SecurityConfig.java` | JWT resource server config, JWKS validation via Spring Security |
+| `claims-api/.../config/JwtAuthConverter.java` | Extracts orgs from token, builds granted authorities |
+| `claims-api/.../config/OrgContextFilter.java` | Validates X-Organization-Id header against JWT orgs claim |
 
 ## 1) PKCE login: password to auth code to token
 
