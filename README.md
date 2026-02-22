@@ -46,7 +46,7 @@ Users authenticate via Keycloak (Phase Two), select an organization, and manage 
 
 ## Auth Flow Diagrams
 
-For PKCE + Java strategy sequence diagrams (5 flows), see [auth-patterns.md](auth-patterns.md).
+For PKCE + Java strategy sequence diagrams (5 flows), see [auth-patterns.md](auth-patterns.md) and watch the [voiced-over video walkthrough](https://youtu.be/rHWKHOqpeuE).
 
 ## Quick Start
 
