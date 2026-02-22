@@ -1,6 +1,6 @@
 # Auth Patterns (v1.3)
 
-5 sequence diagrams for PKCE login and Java token validation.
+Five flows for this demo. Diagram 1 gets auth code with PKCE. Diagrams 2 to 5 show the four Java validation paths.
 
 ## 1) PKCE login: password to auth code to token
 
@@ -13,6 +13,7 @@ sequenceDiagram
     participant Java as Spring Boot Auth API
 
     User->>Browser: Pick strategy and enter email/password
+    Browser->>Browser: Make code_verifier and code_challenge
     Browser->>NextAPI: get-login-form(auth url)
     NextAPI->>CIAM: GET /auth
     CIAM-->>NextAPI: login form action + cookies
@@ -122,3 +123,20 @@ sequenceDiagram
     Java->>Java: Nimbus read and validate
     Java-->>Browser: PASS or FAIL + claims
 ```
+
+
+## Key Point
+
+Spring never sees the password. Browser and NextJS proxy send password to Keycloak. Spring gets auth code, then token.
+
+## Quick Compare
+
+| Mode | Keycloak call during validate | Revocation check now | Client secret |
+|---|---|---|---|
+| JWKS | No | No | No |
+| Introspection | Yes | Yes | Yes |
+
+| Style | Code size | Use |
+|---|---|---|
+| Vanilla | More | Teach protocol steps |
+| Nimbus | Less | Production style |
