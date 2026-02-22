@@ -27,3 +27,7 @@ spring:
 app:
   cors:
     allowed-origins: http://localhost:3000
+  auth:
+    frontend-client-id: poc-frontend
+    introspection-client-id: poc-bff
+    introspection-client-secret: test-secret

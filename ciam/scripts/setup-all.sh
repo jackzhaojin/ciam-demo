@@ -34,6 +34,8 @@ SCRIPTS=(
   "07-create-org-roles.sh"
   "08-create-test-users.sh"
   "09-configure-production-uris.sh"
+  "10-register-frontend-client.sh"
+  "11-configure-frontend-mappers.sh"
 )
 
 FAILED=0

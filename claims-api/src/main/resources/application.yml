@@ -29,3 +29,7 @@ spring:
 app:
   cors:
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+  auth:
+    frontend-client-id: ${KEYCLOAK_FRONTEND_CLIENT_ID:poc-frontend}
+    introspection-client-id: ${KEYCLOAK_BFF_CLIENT_ID:poc-bff}
+    introspection-client-secret: ${KEYCLOAK_BFF_CLIENT_SECRET:}

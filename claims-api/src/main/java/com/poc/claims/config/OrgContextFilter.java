@@ -27,7 +27,7 @@ public class OrgContextFilter extends OncePerRequestFilter {
 
         // Skip for public endpoints
         String path = request.getRequestURI();
-        if (path.equals("/api/health") || request.getMethod().equals("OPTIONS")) {
+        if (path.equals("/api/health") || path.startsWith("/api/auth/") || request.getMethod().equals("OPTIONS")) {
             filterChain.doFilter(request, response);
             return;
         }

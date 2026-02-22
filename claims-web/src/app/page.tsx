@@ -1,5 +1,6 @@
 import { auth, signIn, signOut } from "../../auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default async function LandingPage({
@@ -58,16 +59,24 @@ export default async function LandingPage({
           across your organizations.
         </p>
       </div>
-      <form
-        action={async () => {
-          "use server";
-          await signIn("keycloak", { redirectTo: "/dashboard" });
-        }}
-      >
-        <Button size="lg" type="submit">
-          Sign In
-        </Button>
-      </form>
+      <div className="flex flex-col items-center gap-3">
+        <form
+          action={async () => {
+            "use server";
+            await signIn("keycloak", { redirectTo: "/dashboard" });
+          }}
+        >
+          <Button size="lg" type="submit">
+            Sign In
+          </Button>
+        </form>
+        <Link
+          href="/login"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Advanced Login (Strategy Demo)
+        </Link>
+      </div>
     </div>
   );
 }

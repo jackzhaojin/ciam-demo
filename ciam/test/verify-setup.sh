@@ -138,12 +138,32 @@ else
   fail "Client 'poc-backend' NOT found"
 fi
 
-# Check that poc-frontend does NOT exist (gap fix #2)
+# Check that poc-frontend exists as a public PKCE client (v1.3 strategy demo)
 FRONTEND_UUID=$(get_client_uuid "poc-frontend")
-if [[ -z "$FRONTEND_UUID" ]]; then
-  pass "Client 'poc-frontend' does NOT exist (correct — BFF only)"
+if [[ -n "$FRONTEND_UUID" ]]; then
+  pass "Client 'poc-frontend' exists (UUID: $FRONTEND_UUID)"
+
+  frontend_client=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/clients/${FRONTEND_UUID}")
+  frontend_public=$(echo "$frontend_client" | jq -r '.publicClient')
+  frontend_standard=$(echo "$frontend_client" | jq -r '.standardFlowEnabled')
+  frontend_pkce=$(echo "$frontend_client" | jq -r '.attributes["pkce.code.challenge.method"] // empty')
+  if [[ "$frontend_public" == "true" ]]; then
+    pass "  poc-frontend is public (publicClient=true)"
+  else
+    fail "  poc-frontend is NOT public (should be publicClient=true)"
+  fi
+  if [[ "$frontend_standard" == "true" ]]; then
+    pass "  poc-frontend has standardFlowEnabled=true"
+  else
+    fail "  poc-frontend has standardFlowEnabled=false"
+  fi
+  if [[ "$frontend_pkce" == "S256" ]]; then
+    pass "  poc-frontend has PKCE S256 enforced"
+  else
+    warn "  poc-frontend PKCE method: '${frontend_pkce:-not set}' (expected S256)"
+  fi
 else
-  warn "Client 'poc-frontend' exists (should have been removed per gap fix #2)"
+  fail "Client 'poc-frontend' NOT found (required for v1.3 strategy demo)"
 fi
 
 # ── 5. Token mappers ────────────────────────────────────────────────────────
@@ -184,6 +204,24 @@ if [[ -n "$BACKEND_UUID" ]]; then
       pass "$mapper_name exists on poc-backend"
     else
       fail "$mapper_name NOT found on poc-backend"
+    fi
+  done
+fi
+
+if [[ -n "$FRONTEND_UUID" ]]; then
+  frontend_mappers=$(kc_get "/admin/realms/${KEYCLOAK_REALM}/clients/${FRONTEND_UUID}/protocol-mappers/models")
+
+  if echo "$frontend_mappers" | jq -e '.[] | select(.name == "loyalty-tier-mapper")' &>/dev/null; then
+    pass "loyalty-tier-mapper exists on poc-frontend"
+  else
+    fail "loyalty-tier-mapper NOT found on poc-frontend"
+  fi
+
+  for mapper_name in "org-role-mapper" "org-attribute-mapper"; do
+    if echo "$frontend_mappers" | jq -e --arg n "$mapper_name" '.[] | select(.name == $n)' &>/dev/null; then
+      pass "$mapper_name exists on poc-frontend"
+    else
+      fail "$mapper_name NOT found on poc-frontend"
     fi
   done
 fi

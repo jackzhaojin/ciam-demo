@@ -33,6 +33,11 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 
+    // v1.3: Portable token validation (Java 8 compatible, zero Spring imports)
+    implementation("com.nimbusds:nimbus-jose-jwt:9.47")
+    implementation("com.nimbusds:oauth2-oidc-sdk:11.20.1")
+    implementation("org.json:json:20240303")
+
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
 
