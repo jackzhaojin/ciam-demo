@@ -28,6 +28,12 @@ sequenceDiagram
     Java-->>Browser: validation result
 ```
 
+| Java class | File | Lines |
+|---|---|---|
+| PKCE callback endpoint | `AuthController` | `claims-api/src/main/java/com/poc/claims/auth/AuthController.java:29-38` |
+| Code exchange + validate dispatch | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:62-108` |
+| Token endpoint POST body and call | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:110-150` |
+
 ## 2) PKCE + Java flow: JWKS Vanilla
 
 ```mermaid
@@ -51,6 +57,12 @@ sequenceDiagram
     Java->>Java: Verify signature and claims
     Java-->>Browser: PASS or FAIL + claims
 ```
+
+| Java class | File | Lines |
+|---|---|---|
+| Strategy selected and invoked | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:67-86` |
+| JWT split, JWKS fetch, RSA verify | `JwksVanillaStrategy` | `claims-api/src/main/java/com/poc/claims/auth/strategy/JwksVanillaStrategy.java:42-119` |
+| Claim extraction and result | `JwksVanillaStrategy` | `claims-api/src/main/java/com/poc/claims/auth/strategy/JwksVanillaStrategy.java:121-149` |
 
 ## 3) PKCE + Java flow: JWKS Nimbus
 
@@ -76,6 +88,12 @@ sequenceDiagram
     Java-->>Browser: PASS or FAIL + claims
 ```
 
+| Java class | File | Lines |
+|---|---|---|
+| Strategy selected and invoked | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:67-86` |
+| Nimbus JWKS source + JWT processor | `JwksNimbusStrategy` | `claims-api/src/main/java/com/poc/claims/auth/strategy/JwksNimbusStrategy.java:39-63` |
+| Claim extraction and result | `JwksNimbusStrategy` | `claims-api/src/main/java/com/poc/claims/auth/strategy/JwksNimbusStrategy.java:65-100` |
+
 ## 4) PKCE + Java flow: Introspection Vanilla HTTP
 
 ```mermaid
@@ -99,6 +117,12 @@ sequenceDiagram
     Java->>Java: Check active and read claims
     Java-->>Browser: PASS or FAIL + claims
 ```
+
+| Java class | File | Lines |
+|---|---|---|
+| Strategy selected and invoked | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:67-86` |
+| Basic auth + introspection HTTP call | `IntrospectionVanillaStrategy` | `claims-api/src/main/java/com/poc/claims/auth/strategy/IntrospectionVanillaStrategy.java:42-72` |
+| Active check, claim extraction, result | `IntrospectionVanillaStrategy` | `claims-api/src/main/java/com/poc/claims/auth/strategy/IntrospectionVanillaStrategy.java:88-121` |
 
 ## 5) PKCE + Java flow: Introspection Nimbus
 
@@ -124,6 +148,11 @@ sequenceDiagram
     Java-->>Browser: PASS or FAIL + claims
 ```
 
+| Java class | File | Lines |
+|---|---|---|
+| Strategy selected and invoked | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:67-86` |
+| Nimbus introspection request + parse | `IntrospectionNimbusStrategy` | `claims-api/src/main/java/com/poc/claims/auth/strategy/IntrospectionNimbusStrategy.java:42-67` |
+| Active check, claim extraction, result | `IntrospectionNimbusStrategy` | `claims-api/src/main/java/com/poc/claims/auth/strategy/IntrospectionNimbusStrategy.java:68-104` |
 
 ## Key Point
 
