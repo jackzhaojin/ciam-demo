@@ -44,6 +44,10 @@ Users authenticate via Keycloak (Phase Two), select an organization, and manage 
 | [`claims-web/`](claims-web/) | Frontend application | Next.js 16, TypeScript, Auth.js | [claims-web/README.md](claims-web/README.md) |
 | `ai-docs/` | Design specifications | Markdown | — |
 
+## Auth Flow Diagrams
+
+For PKCE + Java strategy sequence diagrams (5 flows), see [auth-patterns.md](auth-patterns.md).
+
 ## Quick Start
 
 **Prerequisites:** JDK 21, Node 22 LTS, pnpm, curl, jq
