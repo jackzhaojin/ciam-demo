@@ -58,7 +58,10 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ValidationResultData | null>(null);
 
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ||
+    (typeof window !== "undefined"
+      ? `${window.location.protocol}//${window.location.hostname}:8080`
+      : "http://localhost:8080");
 
   useEffect(() => {
     // Fetch strategies and config from Spring Boot
