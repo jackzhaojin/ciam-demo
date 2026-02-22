@@ -13,7 +13,7 @@ sequenceDiagram
     participant Java as Spring Boot Claims API
 
     User->>Browser: Click "Sign In with Keycloak"
-    Browser->>NextJS: GET /api/auth/signin
+    Browser->>NextJS: POST /api/auth/signin/keycloak
     NextJS->>CIAM: Redirect to /auth (authorize endpoint)
     CIAM-->>Browser: Keycloak hosted login page
     User->>CIAM: Enter email and password directly in Keycloak
@@ -68,8 +68,8 @@ sequenceDiagram
 | Java class | File | Lines |
 |---|---|---|
 | PKCE callback endpoint | `AuthController` | `claims-api/src/main/java/com/poc/claims/auth/AuthController.java:29-38` |
-| Code exchange + validate dispatch | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:62-108` |
-| Token endpoint POST body and call | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:110-150` |
+| Code exchange + validate dispatch | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:62-117` |
+| Token endpoint POST body and call | `AuthService` | `claims-api/src/main/java/com/poc/claims/auth/AuthService.java:119-165` |
 
 ## 2) PKCE + Java flow: JWKS Vanilla
 
@@ -82,6 +82,10 @@ sequenceDiagram
     participant Java as Spring Boot Auth API
 
     User->>Browser: Choose jwks-vanilla and sign in
+    Browser->>NextAPI: get-login-form(auth url)
+    NextAPI->>CIAM: GET /auth
+    CIAM-->>NextAPI: login form action + cookies
+    NextAPI-->>Browser: form action + cookies
     Browser->>NextAPI: submit-credentials(email,password,cookies)
     NextAPI->>CIAM: POST login-actions/authenticate
     CIAM-->>NextAPI: redirect with auth code
@@ -112,6 +116,10 @@ sequenceDiagram
     participant Java as Spring Boot Auth API
 
     User->>Browser: Choose jwks-nimbus and sign in
+    Browser->>NextAPI: get-login-form(auth url)
+    NextAPI->>CIAM: GET /auth
+    CIAM-->>NextAPI: login form action + cookies
+    NextAPI-->>Browser: form action + cookies
     Browser->>NextAPI: submit-credentials(email,password,cookies)
     NextAPI->>CIAM: POST login-actions/authenticate
     CIAM-->>NextAPI: redirect with auth code
@@ -142,6 +150,10 @@ sequenceDiagram
     participant Java as Spring Boot Auth API
 
     User->>Browser: Choose introspection-vanilla and sign in
+    Browser->>NextAPI: get-login-form(auth url)
+    NextAPI->>CIAM: GET /auth
+    CIAM-->>NextAPI: login form action + cookies
+    NextAPI-->>Browser: form action + cookies
     Browser->>NextAPI: submit-credentials(email,password,cookies)
     NextAPI->>CIAM: POST login-actions/authenticate
     CIAM-->>NextAPI: redirect with auth code
@@ -172,6 +184,10 @@ sequenceDiagram
     participant Java as Spring Boot Auth API
 
     User->>Browser: Choose introspection-nimbus and sign in
+    Browser->>NextAPI: get-login-form(auth url)
+    NextAPI->>CIAM: GET /auth
+    CIAM-->>NextAPI: login form action + cookies
+    NextAPI-->>Browser: form action + cookies
     Browser->>NextAPI: submit-credentials(email,password,cookies)
     NextAPI->>CIAM: POST login-actions/authenticate
     CIAM-->>NextAPI: redirect with auth code
@@ -199,8 +215,8 @@ Spring never sees the password. Browser and NextJS proxy send password to Keyclo
 
 | Mode | Keycloak call during validate | Revocation check now | Client secret |
 |---|---|---|---|
-| JWKS | No | No | No |
-| Introspection | Yes | Yes | Yes |
+| JWKS | Yes (GET /certs for public keys) | No | No |
+| Introspection | Yes (POST /token/introspect) | Yes | Yes |
 
 | Style | Code size | Use |
 |---|---|---|
