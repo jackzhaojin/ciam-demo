@@ -75,7 +75,8 @@ public class AuthService {
         try {
             // Step 1: Exchange code for tokens
             String tokenEndpoint = issuerUri + "/protocol/openid-connect/token";
-            String accessToken = exchangeCodeForToken(tokenEndpoint, authorizationCode, codeVerifier, redirectUri);
+            Map<String, Object> tokenData = exchangeCodeForTokens(tokenEndpoint, authorizationCode, codeVerifier, redirectUri);
+            String accessToken = (String) tokenData.get("access_token");
 
             // Step 2: Validate with selected strategy
             Map<String, String> config = new HashMap<>();
@@ -95,7 +96,15 @@ public class AuthService {
             details.setDurationMs(result.getDurationMs());
             response.setValidationDetails(details);
 
-            if (!result.isValid()) {
+            if (result.isValid()) {
+                // Attach tokens so the frontend can create a session
+                PkceCallbackResponse.TokenData tokens = new PkceCallbackResponse.TokenData();
+                tokens.setAccessToken(accessToken);
+                tokens.setRefreshToken((String) tokenData.get("refresh_token"));
+                tokens.setIdToken((String) tokenData.get("id_token"));
+                tokens.setExpiresIn(((Number) tokenData.get("expires_in")).longValue());
+                response.setTokens(tokens);
+            } else {
                 response.setError(result.getError());
             }
 
@@ -107,7 +116,7 @@ public class AuthService {
         return response;
     }
 
-    private String exchangeCodeForToken(String tokenEndpoint, String code, String codeVerifier, String redirectUri) throws Exception {
+    private Map<String, Object> exchangeCodeForTokens(String tokenEndpoint, String code, String codeVerifier, String redirectUri) throws Exception {
         String body = "grant_type=authorization_code"
                 + "&code=" + java.net.URLEncoder.encode(code, "UTF-8")
                 + "&client_id=" + java.net.URLEncoder.encode(frontendClientId, "UTF-8")
@@ -146,6 +155,12 @@ public class AuthService {
         if (accessToken == null || accessToken.isEmpty()) {
             throw new RuntimeException("No access_token in token response");
         }
-        return accessToken;
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("access_token", accessToken);
+        result.put("refresh_token", tokenResponse.optString("refresh_token", null));
+        result.put("id_token", tokenResponse.optString("id_token", null));
+        result.put("expires_in", tokenResponse.optInt("expires_in", 300));
+        return result;
     }
 }

@@ -34,6 +34,13 @@ interface AuthConfig {
   clientId: string;
 }
 
+interface TokenData {
+  accessToken: string;
+  refreshToken?: string;
+  idToken?: string;
+  expiresIn: number;
+}
+
 interface ValidationResultData {
   success: boolean;
   strategy: string;
@@ -45,6 +52,7 @@ interface ValidationResultData {
     steps: string[];
     durationMs: number;
   };
+  tokens?: TokenData;
   error?: string;
 }
 
@@ -57,6 +65,8 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ValidationResultData | null>(null);
+  const [tokens, setTokens] = useState<TokenData | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ||
     (typeof window !== "undefined"
@@ -86,6 +96,7 @@ export function LoginPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setTokens(null);
 
     try {
       // Step 1: Generate PKCE pair
@@ -145,13 +156,28 @@ export function LoginPage() {
           }),
         },
       );
-      const callbackData = await callbackResp.json();
+      const callbackData: ValidationResultData = await callbackResp.json();
       setResult(callbackData);
+      if (callbackData.success && callbackData.tokens) {
+        setTokens(callbackData.tokens);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "PKCE login failed");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleContinueToDashboard = async () => {
+    if (!tokens) return;
+    setSessionLoading(true);
+    await signIn("pkce-session", {
+      callbackUrl: "/dashboard",
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken ?? "",
+      idToken: tokens.idToken ?? "",
+      expiresIn: String(tokens.expiresIn),
+    });
   };
 
   return (
@@ -262,6 +288,18 @@ export function LoginPage() {
             )}
 
             {result && <ValidationResult data={result} />}
+
+            {tokens && (
+              <Button
+                onClick={handleContinueToDashboard}
+                disabled={sessionLoading}
+                className="w-full"
+              >
+                {sessionLoading
+                  ? "Creating session..."
+                  : "Continue to Dashboard"}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

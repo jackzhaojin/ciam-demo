@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
+import Credentials from "next-auth/providers/credentials";
 import type { Organizations } from "@/types/auth";
 
 /**
@@ -23,30 +24,85 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.KEYCLOAK_BFF_CLIENT_SECRET,
       issuer: process.env.KEYCLOAK_ISSUER_URI,
     }),
+    Credentials({
+      id: "pkce-session",
+      name: "PKCE Session",
+      credentials: {
+        accessToken: { type: "text" },
+        refreshToken: { type: "text" },
+        idToken: { type: "text" },
+        expiresIn: { type: "text" },
+      },
+      async authorize(credentials) {
+        const accessToken = credentials?.accessToken as string;
+        if (!accessToken) return null;
+
+        try {
+          // Decode the JWT payload to extract user info
+          const payload = JSON.parse(
+            Buffer.from(accessToken.split(".")[1], "base64url").toString()
+          );
+
+          return {
+            id: payload.email ?? payload.sub ?? "unknown",
+            email: payload.email,
+            name: payload.name ?? payload.preferred_username,
+            accessToken,
+            refreshToken: (credentials?.refreshToken as string) ?? undefined,
+            idToken: (credentials?.idToken as string) ?? undefined,
+            expiresIn: Number(credentials?.expiresIn) || 300,
+            organizations: payload.organizations ?? {},
+            loyaltyTier: payload.loyalty_tier,
+          };
+        } catch {
+          return null;
+        }
+      },
+    }),
   ],
   callbacks: {
-    async jwt({ token, account, profile }) {
+    async jwt({ token, account, profile, user }) {
       // On initial sign-in, store tokens and extract custom claims
       if (account) {
-        token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
-        token.idToken = account.id_token;
-        token.expiresAt = account.expires_at;
+        if (account.provider === "pkce-session") {
+          // Credentials provider: tokens come from the user object
+          const u = user as Record<string, unknown>;
+          token.accessToken = u.accessToken as string;
+          token.refreshToken = u.refreshToken as string | undefined;
+          token.idToken = u.idToken as string | undefined;
+          token.expiresAt = Math.floor(
+            Date.now() / 1000 + (Number(u.expiresIn) || 300)
+          );
+          token.organizations = u.organizations as Organizations;
+          token.loyaltyTier = u.loyaltyTier as string | undefined;
 
-        // Extract organizations from the ID token / profile
-        const orgs =
-          (profile as Record<string, unknown>)?.organizations ?? {};
-        token.organizations = orgs as Organizations;
+          const email = u.email ?? token.email;
+          if (email) {
+            token.userId = await uuidFromEmail(email as string);
+          }
+        } else {
+          // Keycloak (OAuth) provider
+          token.accessToken = account.access_token;
+          token.refreshToken = account.refresh_token;
+          token.idToken = account.id_token;
+          token.expiresAt = account.expires_at;
 
-        // Extract loyalty tier from profile
-        token.loyaltyTier =
-          ((profile as Record<string, unknown>)?.loyalty_tier as string) ??
-          undefined;
+          // Extract organizations from the ID token / profile
+          const orgs =
+            (profile as Record<string, unknown>)?.organizations ?? {};
+          token.organizations = orgs as Organizations;
 
-        // Derive stable user ID matching backend's UUID.nameUUIDFromBytes(email)
-        const email = (profile as Record<string, unknown>)?.email ?? token.email;
-        if (email) {
-          token.userId = await uuidFromEmail(email as string);
+          // Extract loyalty tier from profile
+          token.loyaltyTier =
+            ((profile as Record<string, unknown>)?.loyalty_tier as string) ??
+            undefined;
+
+          // Derive stable user ID matching backend's UUID.nameUUIDFromBytes(email)
+          const email =
+            (profile as Record<string, unknown>)?.email ?? token.email;
+          if (email) {
+            token.userId = await uuidFromEmail(email as string);
+          }
         }
       }
 

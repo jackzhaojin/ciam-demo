@@ -21,6 +21,7 @@ declare module "next-auth/jwt" {
     expiresAt?: number;
     organizations?: Organizations;
     loyaltyTier?: string;
+    userId?: string;
     error?: string;
   }
 }
